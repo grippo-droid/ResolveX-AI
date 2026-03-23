@@ -1,11 +1,14 @@
-// @refresh reset
 
-import { useState, useEffect, useCallback } from "react";
+
+import { useEffect, useCallback } from "react";
+import { useState } from "react";
 import { Icons } from "./SidebarIcons";
 
 export interface SidebarProps {
   isOpen: boolean;
   onToggle: () => void;
+  activeId: string;                      // ← added
+  onActiveChange: (id: string) => void;  // ← added
 }
 
 interface NavItem {
@@ -87,8 +90,8 @@ function NavRow({ item, isOpen, isActive, onClick }: {
   );
 }
 
-export default function Sidebar({ isOpen, onToggle }: SidebarProps) {
-  const [activeId, setActiveId] = useState("overview");
+export default function Sidebar({ isOpen, onToggle, activeId, onActiveChange }: SidebarProps) {
+  // ← activeId & setActiveId removed, now comes from props
 
   const handleKey = useCallback((e: KeyboardEvent) => {
     if (e.key === "[" && !e.ctrlKey && !e.metaKey && !e.altKey) onToggle();
@@ -124,41 +127,37 @@ export default function Sidebar({ isOpen, onToggle }: SidebarProps) {
         />
 
         {/* ── TOP BAR: Logo + Name + Toggle ── */}
-<div className={[
-  "relative z-10 flex items-center shrink-0 border-b border-white/[0.07] py-5",
-  isOpen ? "px-5 justify-between" : "px-0 justify-center",
-].join(" ")}>
+        <div className={[
+          "relative z-10 flex items-center shrink-0 border-b border-white/[0.07] py-5",
+          isOpen ? "px-5 justify-between" : "px-0 justify-center",
+        ].join(" ")}>
 
-  {/* Logo mark + Name */}
-  <div className="flex items-center gap-3">
-    {/* SVG favicon as logo */}
-    <img
-      src="/favicon.svg"
-      alt="ResolveX Logo"
-      width={36}
-      height={36}
-      className="shrink-0"
-    />
+          {/* Logo mark + Name */}
+          <div className="flex items-center gap-3">
+            <img
+              src="/favicon.svg"
+              alt="ResolveX Logo"
+              width={36}
+              height={36}
+              className="shrink-0"
+            />
+            {isOpen && (
+              <p className="font-extrabold tracking-tight text-[#EFEFEF] leading-none" style={{ fontSize: 25 }}>
+                Resolve<span className="text-[#FF4D00]">X</span>
+                <span style={{ color: "#555" }}>-AI</span>
+              </p>
+            )}
+          </div>
 
-    {/* Brand name — only when open */}
-    {isOpen && (
-      <p className="font-extrabold tracking-tight text-[#EFEFEF] leading-none" style={{ fontSize: 20 }}>
-        Resolve<span className="text-[#FF4D00]">X</span>
-        <span style={{ color: "#555" }}>-AI</span>
-      </p>
-    )}
-  </div>
-
-  {/* Toggle button */}
-  <button
-    onClick={onToggle}
-    aria-label={isOpen ? "Collapse sidebar" : "Expand sidebar"}
-    className="flex items-center justify-center w-7 h-7 rounded-lg bg-white/[0.05] border border-white/[0.1] text-[#777] hover:text-[#FF4D00] hover:bg-[#FF4D00]/[0.08] hover:border-[#FF4D00]/[0.3] transition-all duration-200 cursor-pointer shrink-0"
-  >
-    {isOpen ? Icons.chevronLeft : Icons.chevronRight}
-  </button>
-
-</div>
+          {/* Toggle button */}
+          <button
+            onClick={onToggle}
+            aria-label={isOpen ? "Collapse sidebar" : "Expand sidebar"}
+            className="flex items-center justify-center w-7 h-7 rounded-lg bg-white/[0.05] border border-white/[0.1] text-[#777] hover:text-[#FF4D00] hover:bg-[#FF4D00]/[0.08] hover:border-[#FF4D00]/[0.3] transition-all duration-200 cursor-pointer shrink-0"
+          >
+            {isOpen ? Icons.chevronLeft : Icons.chevronRight}
+          </button>
+        </div>
 
         {/* ── NAV ── */}
         <nav className="relative z-10 flex-1 overflow-y-auto overflow-x-hidden py-6 px-3 flex flex-col gap-6">
@@ -172,7 +171,7 @@ export default function Sidebar({ isOpen, onToggle }: SidebarProps) {
             {!isOpen && <div className="h-2" />}
             <ul className="flex flex-col gap-1 p-0 m-0">
               {NAV_MAIN.map(item => (
-                <NavRow key={item.id} item={item} isOpen={isOpen} isActive={activeId === item.id} onClick={setActiveId} />
+                <NavRow key={item.id} item={item} isOpen={isOpen} isActive={activeId === item.id} onClick={onActiveChange} />
               ))}
             </ul>
           </div>
@@ -187,7 +186,7 @@ export default function Sidebar({ isOpen, onToggle }: SidebarProps) {
             )}
             <ul className="flex flex-col gap-1 p-0 m-0">
               {NAV_SYSTEM.map(item => (
-                <NavRow key={item.id} item={item} isOpen={isOpen} isActive={activeId === item.id} onClick={setActiveId} />
+                <NavRow key={item.id} item={item} isOpen={isOpen} isActive={activeId === item.id} onClick={onActiveChange} />
               ))}
             </ul>
           </div>

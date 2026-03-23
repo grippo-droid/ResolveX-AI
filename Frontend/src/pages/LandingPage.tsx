@@ -280,7 +280,7 @@ export default function LandingPage() {
         .hero-grid {
           background-image:
             linear-gradient(rgba(10,10,10,0.06) 1px, transparent 1px),
-            linear-gradient(90deg, rgba(10,10,10,0.06) 1px, transparent 1px);
+            linear-gradient(90deg, rgba(10,10,10,0.08) 1px, transparent 1px);
           background-size: 48px 48px;
           mask-image: radial-gradient(ellipse 80% 80% at 50% 50%, black 30%, transparent 100%);
           -webkit-mask-image: radial-gradient(ellipse 80% 80% at 50% 50%, black 30%, transparent 100%);
@@ -341,16 +341,20 @@ export default function LandingPage() {
         ].join(" ")}
       >
         <a href="#" className="flex items-center gap-2.5 no-underline text-[#0A0A0A]">
-          <div className="w-8 h-8 bg-[#0A0A0A] rounded-lg flex items-center justify-center shrink-0">
-            <svg width="18" height="18" viewBox="0 0 18 18" fill="none" aria-hidden="true">
-              <path d="M3 9h5M9 3v5M9 9l4.5 4.5" stroke="#E9E9E9" strokeWidth="2" strokeLinecap="round"/>
-              <circle cx="9" cy="9" r="2" fill="#FF4D00"/>
-            </svg>
-          </div>
-          <span className="text-base font-bold tracking-tight">
-            Resolve<span className="text-[#FF4D00]">X</span>
-          </span>
-        </a>
+  <div className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0">
+    <img
+      src="/favicon.svg"
+      alt="ResolveX Logo"
+      width="32"
+      height="32"
+      className="w-8 h-8"
+    />
+  </div>
+  <span className="text-[25px] font-bold tracking-tight">
+    Resolve<span className="text-[#FF4D00]">X</span>-AI
+  </span>
+</a>
+
 
         <ul className="hidden md:flex items-center gap-9 list-none m-0 p-0">
           <li>
@@ -359,7 +363,7 @@ export default function LandingPage() {
             </a>
           </li>
           <li>
-            <a href="#dashboard" onClick={() => navigate("/dashboard")} className="nav-link-hover text-sm font-medium text-[#6B6B6B] hover:text-[#0A0A0A] transition-colors duration-200 no-underline">
+            <a onClick={() => navigate("/dashboard")} className="nav-link-hover text-sm font-medium cursor-pointer text-[#6B6B6B] hover:text-[#0A0A0A] transition-colors duration-200 no-underline">
               Dashboard
             </a>
           </li>
@@ -438,7 +442,7 @@ export default function LandingPage() {
               className={`inline-block mr-[0.22em] ${heroReady ? "word-up" : "opacity-0"}`}
               style={{ animationDelay: `${i * 0.1}s` }}
             >
-              {word}
+              {word}  
             </span>
           ))}
           <br />
@@ -461,16 +465,51 @@ export default function LandingPage() {
         </h1>
 
         {/* Typewriter subtitle */}
-        <p
-          className="relative z-10 font-normal text-[#6B6B6B] max-w-[540px] leading-relaxed mt-6"
-          style={{ fontSize: "clamp(15px, 2vw, 18px)", minHeight: "3.4em" }}
-          aria-live="polite"
-        >
-          {typedSub}
-          {typedSub.length < heroSubText.length && (
-            <span className="anim-blink inline-block w-0.5 h-[1.05em] bg-[#FF4D00] ml-0.5 align-text-bottom rounded-sm" aria-hidden="true" />
-          )}
-        </p>
+        {/* Typewriter subtitle */}
+<p
+  className="relative z-10 font-normal text-[#6B6B6B] max-w-[540px] leading-relaxed mt-6"
+  style={{ fontSize: "clamp(15px, 2vw, 18px)", minHeight: "3.4em" }}
+  aria-live="polite"
+>
+  {(() => {
+    const prefix = "ResolveX-AI";
+    const rest = heroSubText.slice(prefix.length); // " classifies, scores..."
+    const typedAll = typedSub;
+
+    if (typedAll.length <= prefix.length) {
+      // Still typing the "ResolveX-AI" part
+      const typedPrefix = typedAll;
+      const resolvepart = typedPrefix.slice(0, 7);       // "Resolve"
+      const xPart       = typedPrefix.slice(7, 8);       // "X"
+      const aiPart      = typedPrefix.slice(8);          // "-AI" portion typed so far
+      return (
+        <>
+          <span className="text-[#0A0A0A] font-semibold">
+            {resolvepart}
+            <span className="text-[#FF4D00]">{xPart}</span>
+            {aiPart}
+          </span>
+        </>
+      );
+    }
+
+    // "ResolveX-AI" fully typed — now typing the rest
+    return (
+      <>
+        <span className="text-[#0A0A0A] font-semibold">
+          Resolve<span className="text-[#FF4D00]">X</span>-AI
+        </span>
+        {typedAll.slice(prefix.length)}
+      </>
+    );
+  })()}
+
+  {/* Blinking cursor */}
+  {typedSub.length < heroSubText.length && (
+    <span className="anim-blink inline-block w-0.5 h-[1.05em] bg-[#FF4D00] ml-0.5 align-text-bottom rounded-sm" aria-hidden="true" />
+  )}
+</p>
+
 
         {/* CTA */}
         <div className="anim-fadeup-1 relative z-10 flex items-center justify-center mt-10">
