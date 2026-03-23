@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import Sidebar from "../components/Sidebar";
 import Navbar from "../components/Navbar";
-import Simulation from "./Simulation";      // ← added
+import Simulation from "./Simulation";
 
 const PAGE_LABELS: Record<string, string> = {
   overview:   "Overview",
@@ -10,12 +10,30 @@ const PAGE_LABELS: Record<string, string> = {
   audit:      "Audit Logs",
   feedback:   "Feedback",
   settings:   "Settings",
-  simulation: "Simulation",                 // ← added
+  simulation: "Simulation",
 };
 
+const STORAGE_KEY = "resolvex_active_page";
+
 export default function Dashboard() {
-  const [sidebarOpen, setSidebarOpen] = useState(true);
-  const [activeId, setActiveId]       = useState("overview");
+  const [sidebarOpen, setSidebarOpen] = useState(() => {
+    return localStorage.getItem("resolvex_sidebar") !== "false";
+  });
+
+  const [activeId, setActiveId] = useState(() => {
+    const saved = localStorage.getItem(STORAGE_KEY);
+    return saved && PAGE_LABELS[saved] ? saved : "overview";
+  });
+
+  // Persist activeId whenever it changes
+  useEffect(() => {
+    localStorage.setItem(STORAGE_KEY, activeId);
+  }, [activeId]);
+
+  // Persist sidebar state whenever it changes
+  useEffect(() => {
+    localStorage.setItem("resolvex_sidebar", String(sidebarOpen));
+  }, [sidebarOpen]);
 
   useEffect(() => {
     const prev = document.body.style.overflow;
@@ -40,7 +58,7 @@ export default function Dashboard() {
           activeLabel={PAGE_LABELS[activeId] ?? "Dashboard"}
         />
         <main className="flex-1 overflow-y-auto px-7 py-7" role="main">
-          {activeId === "simulation" && <Simulation />}  {/* ← added */}
+          {activeId === "simulation" && <Simulation />}
           {/* other sections coming soon */}
         </main>
       </div>
