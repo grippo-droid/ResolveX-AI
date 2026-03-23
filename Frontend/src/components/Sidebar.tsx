@@ -1,5 +1,3 @@
-
-
 import { useEffect, useCallback } from "react";
 import { useState } from "react";
 import { Icons } from "./SidebarIcons";
@@ -7,8 +5,8 @@ import { Icons } from "./SidebarIcons";
 export interface SidebarProps {
   isOpen: boolean;
   onToggle: () => void;
-  activeId: string;                      // ← added
-  onActiveChange: (id: string) => void;  // ← added
+  activeId: string;
+  onActiveChange: (id: string) => void;
 }
 
 interface NavItem {
@@ -28,6 +26,11 @@ const NAV_MAIN: NavItem[] = [
 
 const NAV_SYSTEM: NavItem[] = [
   { id: "settings", label: "Settings", icon: Icons.settings },
+];
+
+// ── NEW ──
+const NAV_TRIAL: NavItem[] = [
+  { id: "simulation", label: "Simulation", icon: Icons.simulation },
 ];
 
 function Tooltip({ label }: { label: string }) {
@@ -91,8 +94,6 @@ function NavRow({ item, isOpen, isActive, onClick }: {
 }
 
 export default function Sidebar({ isOpen, onToggle, activeId, onActiveChange }: SidebarProps) {
-  // ← activeId & setActiveId removed, now comes from props
-
   const handleKey = useCallback((e: KeyboardEvent) => {
     if (e.key === "[" && !e.ctrlKey && !e.metaKey && !e.altKey) onToggle();
   }, [onToggle]);
@@ -126,21 +127,13 @@ export default function Sidebar({ isOpen, onToggle, activeId, onActiveChange }: 
           style={{ background: "radial-gradient(ellipse 80% 50% at 50% 0%, rgba(255,77,0,0.09) 0%, transparent 100%)" }}
         />
 
-        {/* ── TOP BAR: Logo + Name + Toggle ── */}
+        {/* ── TOP BAR ── */}
         <div className={[
           "relative z-10 flex items-center shrink-0 border-b border-white/[0.07] py-5",
           isOpen ? "px-5 justify-between" : "px-0 justify-center",
         ].join(" ")}>
-
-          {/* Logo mark + Name */}
           <div className="flex items-center gap-3">
-            <img
-              src="/favicon.svg"
-              alt="ResolveX Logo"
-              width={36}
-              height={36}
-              className="shrink-0"
-            />
+            <img src="/favicon.svg" alt="ResolveX Logo" width={36} height={36} className="shrink-0" />
             {isOpen && (
               <p className="font-extrabold tracking-tight text-[#EFEFEF] leading-none" style={{ fontSize: 25 }}>
                 Resolve<span className="text-[#FF4D00]">X</span>
@@ -148,8 +141,6 @@ export default function Sidebar({ isOpen, onToggle, activeId, onActiveChange }: 
               </p>
             )}
           </div>
-
-          {/* Toggle button */}
           <button
             onClick={onToggle}
             aria-label={isOpen ? "Collapse sidebar" : "Expand sidebar"}
@@ -162,6 +153,7 @@ export default function Sidebar({ isOpen, onToggle, activeId, onActiveChange }: 
         {/* ── NAV ── */}
         <nav className="relative z-10 flex-1 overflow-y-auto overflow-x-hidden py-6 px-3 flex flex-col gap-6">
 
+          {/* Main */}
           <div className="flex flex-col gap-1.5">
             {isOpen && (
               <p className="font-bold uppercase text-[#404040] px-4 mb-2" style={{ fontSize: 11, letterSpacing: "2.5px" }}>
@@ -178,6 +170,7 @@ export default function Sidebar({ isOpen, onToggle, activeId, onActiveChange }: 
 
           <div className="border-t border-white/[0.06] mx-2" />
 
+          {/* System */}
           <div className="flex flex-col gap-1.5">
             {isOpen && (
               <p className="font-bold uppercase text-[#404040] px-4 mb-2" style={{ fontSize: 11, letterSpacing: "2.5px" }}>
@@ -190,6 +183,23 @@ export default function Sidebar({ isOpen, onToggle, activeId, onActiveChange }: 
               ))}
             </ul>
           </div>
+
+          <div className="border-t border-white/[0.06] mx-2" />
+
+          {/* Trial */}
+          <div className="flex flex-col gap-1.5">
+            {isOpen && (
+              <p className="font-bold uppercase text-[#404040] px-4 mb-2" style={{ fontSize: 11, letterSpacing: "2.5px" }}>
+                Trial
+              </p>
+            )}
+            <ul className="flex flex-col gap-1 p-0 m-0">
+              {NAV_TRIAL.map(item => (
+                <NavRow key={item.id} item={item} isOpen={isOpen} isActive={activeId === item.id} onClick={onActiveChange} />
+              ))}
+            </ul>
+          </div>
+
         </nav>
 
         {/* ── BOTTOM ── */}

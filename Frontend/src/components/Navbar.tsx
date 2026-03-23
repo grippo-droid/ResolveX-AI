@@ -18,14 +18,14 @@ export default function Navbar({ sidebarOpen, onSidebarToggle, activeLabel }: Na
   }, []);
 
   return (
-    <header
-      className={[
-        "shrink-0 h-16 flex items-center justify-between px-7 z-30 transition-all duration-300",
-        scrolled
-          ? "bg-[#E9E9E9]/90 backdrop-blur-md shadow-[0_1px_0_rgba(10,10,10,0.08)]"
-          : "bg-transparent",
-      ].join(" ")}
-    >
+   <header
+  className={[
+    "shrink-0 h-16 flex items-center justify-between px-7 z-30 transition-all duration-300 border-b border-black/20",
+    scrolled
+      ? "bg-[#E9E9E9]/90 backdrop-blur-md shadow-[0_1px_0_rgba(10,10,10,0.08)]"
+      : "bg-transparent",
+  ].join(" ")}
+>
       {/* Left — sidebar toggle (mobile) + page title */}
       <div className="flex items-center gap-4">
         {/* Mobile sidebar toggle */}

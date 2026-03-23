@@ -1,14 +1,16 @@
 import { useState, useEffect } from "react";
 import Sidebar from "../components/Sidebar";
 import Navbar from "../components/Navbar";
+import Simulation from "./Simulation";      // ← added
 
 const PAGE_LABELS: Record<string, string> = {
-  overview:  "Overview",
-  tickets:   "Tickets",
-  decisions: "AI Decisions",
-  audit:     "Audit Logs",
-  feedback:  "Feedback",
-  settings:  "Settings",
+  overview:   "Overview",
+  tickets:    "Tickets",
+  decisions:  "AI Decisions",
+  audit:      "Audit Logs",
+  feedback:   "Feedback",
+  settings:   "Settings",
+  simulation: "Simulation",                 // ← added
 };
 
 export default function Dashboard() {
@@ -38,7 +40,8 @@ export default function Dashboard() {
           activeLabel={PAGE_LABELS[activeId] ?? "Dashboard"}
         />
         <main className="flex-1 overflow-y-auto px-7 py-7" role="main">
-          {/* Content coming soon */}
+          {activeId === "simulation" && <Simulation />}  {/* ← added */}
+          {/* other sections coming soon */}
         </main>
       </div>
     </div>

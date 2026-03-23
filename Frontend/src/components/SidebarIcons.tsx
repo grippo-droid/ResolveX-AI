@@ -37,6 +37,12 @@ export const Icons = {
       <path d="M10 2v2.5M10 15.5V18M2 10h2.5M15.5 10H18M4.2 4.2l1.8 1.8M14 14l1.8 1.8M4.2 15.8l1.8-1.8M14 6l1.8-1.8" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
     </svg>
   ),
+  // ── NEW ──
+  simulation: (
+    <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+      <path d="M3 10h3l2.5-6 3 12 2.5-6H17" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+    </svg>
+  ),
   chevronLeft: (
     <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
       <path d="M11 4.5L6.5 9l4.5 4.5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
