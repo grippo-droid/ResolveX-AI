@@ -1,45 +1,66 @@
 import { useState, useEffect } from "react";
 import Sidebar from "../components/Sidebar";
-import Navbar  from "../components/Navbar";
+import Navbar from "../components/Navbar";
+import Simulation from "./Simulation";
+import TicketHistory from "./TicketHistory";
+
+const PAGE_LABELS: Record<string, string> = {
+  overview:      "Overview",
+  tickets:       "Tickets",
+  decisions:     "AI Decisions",
+  audit:         "Audit Logs",
+  feedback:      "Feedback",
+  simulation:    "Simulation",
+  tickethistory: "Ticket History",
+};
+
+const STORAGE_KEY = "resolvex_active_page";
 
 export default function Dashboard() {
-  const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [sidebarOpen, setSidebarOpen] = useState(() => {
+    return localStorage.getItem("resolvex_sidebar") !== "false";
+  });
 
-  // Set body overflow to hidden ONLY while on dashboard
-  // Restore it when navigating away (e.g. back to landing page)
+  const [activeId, setActiveId] = useState(() => {
+    const saved = localStorage.getItem(STORAGE_KEY);
+    return saved && PAGE_LABELS[saved] ? saved : "overview";
+  });
+
+  useEffect(() => {
+    localStorage.setItem(STORAGE_KEY, activeId);
+  }, [activeId]);
+
+  useEffect(() => {
+    localStorage.setItem("resolvex_sidebar", String(sidebarOpen));
+  }, [sidebarOpen]);
+
   useEffect(() => {
     const prev = document.body.style.overflow;
     document.body.style.overflow = "hidden";
-    return () => {
-      document.body.style.overflow = prev;
-    };
+    return () => { document.body.style.overflow = prev; };
   }, []);
 
-  const handleToggle = () => {
-    try {
-      setSidebarOpen(v => !v);
-    } catch (err) {
-      console.error("[Dashboard] sidebar toggle error:", err);
-    }
-  };
+  const handleToggle = () => setSidebarOpen(v => !v);
 
   return (
     <div className="flex h-screen w-screen overflow-hidden">
-
-      {/* Sidebar — black theme, collapsible */}
-      <Sidebar isOpen={sidebarOpen} onToggle={handleToggle} />
-
-      {/* Main column */}
+      <Sidebar
+        isOpen={sidebarOpen}
+        onToggle={handleToggle}
+        activeId={activeId}
+        onActiveChange={setActiveId}
+      />
       <div className="flex flex-col flex-1 min-w-0 overflow-hidden bg-[#E9E9E9]">
-
-        {/* Navbar */}
-        <Navbar sidebarOpen={sidebarOpen} onSidebarToggle={handleToggle} />
-
-        {/* Content area */}
+        <Navbar
+          sidebarOpen={sidebarOpen}
+          onSidebarToggle={handleToggle}
+          activeLabel={PAGE_LABELS[activeId] ?? "Dashboard"}
+        />
         <main className="flex-1 overflow-y-auto px-7 py-7" role="main">
-          {/* Content coming soon */}
+          {activeId === "simulation"    && <Simulation />}
+          {activeId === "tickethistory" && <TicketHistory />}
+          {/* other sections coming soon */}
         </main>
-
       </div>
     </div>
   );
