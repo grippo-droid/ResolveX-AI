@@ -3,7 +3,7 @@ import Sidebar                         from "../components/Sidebar";
 import Navbar                          from "../components/Navbar";
 import Simulation                      from "./Simulation";
 import TicketHistory                   from "./TicketHistory";
-import TicketsList                     from "./TicketsList";
+import TicketsList                     from "./Ticketslist";
 import { getTickets }                  from "../services/api";
 
 const PAGE_LABELS: Record<string, string> = {

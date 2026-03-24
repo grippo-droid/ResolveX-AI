@@ -65,15 +65,18 @@ function useInView(threshold = 0.2) {
   return { ref, inView };
 }
 
-// ── AnimatedTitle ──────────────────────────────────────────────────────────
-function AnimatedTitle({ children, className }: { children: string; className?: string }) {
+function AnimatedTitle({ children, className, style }: { 
+  children: string; 
+  className?: string;
+  style?: React.CSSProperties 
+}) {
   const { ref, inView } = useInView(0.3);
   const safeChildren = typeof children === "string" ? children.trim() : "";
   const words = safeChildren ? safeChildren.split(" ").filter(Boolean) : [];
   if (!words.length) return null;
 
   return (
-    <h2 ref={ref} className={className}>
+    <h2 ref={ref} className={className} style={style}>
       {words.map((word, i) => (
         <span
           key={`${word}-${i}`}
