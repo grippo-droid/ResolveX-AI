@@ -55,18 +55,21 @@ function formatDate(iso: string): string {
 }
 
 function normalizeDecision(ticket: TicketAPIResponse): Decision {
-  if (ticket.decision === "auto-resolved") return "auto-resolved";
-  if (ticket.decision === "escalated")     return "escalated";
+  const val = (ticket.decision ?? ticket.status ?? "").toLowerCase().replace("_", "-");
+  if (val === "auto-resolved") return "auto-resolved";
+  if (val === "escalated")     return "escalated";
   return "human-review";
 }
 
 function getStatusColor(status: string): { color: string; bg: string } {
-  switch (status) {
-    case "open":        return { color: "#2563eb", bg: "#eff6ff" };
-    case "in-progress": return { color: "#b45309", bg: "#fffbeb" };
-    case "resolved":    return { color: "#15803d", bg: "#f0fdf4" };
-    case "closed":      return { color: "#6B6B6B", bg: "#F5F5F5" };
-    default:            return { color: "#6B6B6B", bg: "#F5F5F5" };
+  const s = (status ?? "").toLowerCase().replace("_", "-");
+  switch (s) {
+    case "open":          return { color: "#2563eb", bg: "#eff6ff" };
+    case "in-progress":   return { color: "#b45309", bg: "#fffbeb" };
+    case "resolved":      return { color: "#15803d", bg: "#f0fdf4" };
+    case "closed":        return { color: "#6B6B6B", bg: "#F5F5F5" };
+    case "auto-resolved": return { color: "#15803d", bg: "#f0fdf4" }; // ✅
+    default:              return { color: "#6B6B6B", bg: "#F5F5F5" };
   }
 }
 
@@ -448,19 +451,24 @@ export default function TicketsList() {
       );
 
       // ✅ Auto-close all auto-resolved tickets that aren't already closed
-      const autoClosedTickets = await Promise.all(
-        data.tickets.map(async (t) => {
-          if (normalizeDecision(t) === "auto-resolved" && t.status !== "closed") {
-            try {
-              await updateTicket(t.id, { status: "closed" });
-              return { ...t, status: "closed" };
-            } catch {
-              return t;
-            }
-          }
-          return t;
-        })
-      );
+const autoClosedTickets = await Promise.all(
+  data.tickets.map(async (t) => {
+    const decision = normalizeDecision(t);
+    // ✅ catches "Auto_resolved", "auto-resolved", "auto_resolved" all
+    const alreadyClosed = t.status?.toLowerCase() === "closed";
+
+    if (decision === "auto-resolved" && !alreadyClosed) {
+      try {
+        await updateTicket(t.id, { status: "closed" });
+        return { ...t, status: "closed" };  // ✅ update in memory too
+      } catch (e) {
+        console.error(`❌ Failed to auto-close ticket ${t.id}`, e);
+        return { ...t, status: "closed" };  // ✅ still show closed in UI even if API fails
+      }
+    }
+    return t;
+  })
+);
 
       setTickets(autoClosedTickets);
       setTotal(data.total);
@@ -540,13 +548,17 @@ export default function TicketsList() {
     });
 
   // ✅ Counts by actual ticket status
-  const counts = {
-    all:        tickets.length,
-    open:       tickets.filter(t => t.status === "open").length,
-    inProgress: tickets.filter(t => t.status === "in-progress").length,
-    resolved:   tickets.filter(t => t.status === "resolved").length,
-    closed:     tickets.filter(t => t.status === "closed").length,
-  };
+const counts = {
+  all:        tickets.length,
+  open:       tickets.filter(t => t.status?.toLowerCase() === "open").length,
+  inProgress: tickets.filter(t => t.status?.toLowerCase() === "in-progress").length,
+  resolved:   tickets.filter(t => t.status?.toLowerCase() === "resolved").length,
+  closed:     tickets.filter(t =>
+    t.status?.toLowerCase() === "closed" ||
+    t.status?.toLowerCase() === "auto_resolved" ||   // ✅ backend raw value
+    t.status?.toLowerCase() === "auto-resolved"      // ✅ normalized value
+  ).length,
+};
 
   const toggleSort = (field: SortField) => {
     if (sortField === field) setSortOrder(o => o === "asc" ? "desc" : "asc");
