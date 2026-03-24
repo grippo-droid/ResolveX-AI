@@ -41,7 +41,7 @@ export default function Navbar({ sidebarOpen, onSidebarToggle, activeLabel }: Na
 
         {/* Page title */}
         <div>
-          <h1 className="text-[17px] font-bold text-[#0A0A0A] tracking-tight leading-none">
+          <h1 className="text-[25px] font-bold text-[#0A0A0A] tracking-tight leading-none">
             {activeLabel}     {/* ← was hardcoded "Dashboard" */}
           </h1>
           <p className="text-[12px] text-[#6B6B6B] mt-0.5">

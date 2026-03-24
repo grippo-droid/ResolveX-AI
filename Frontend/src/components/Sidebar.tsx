@@ -60,7 +60,7 @@ function NavRow({ item, isOpen, isActive, onClick }: {
           isOpen ? "gap-3.5 px-4 py-3.5" : "justify-center px-0 py-3.5",
           isActive
             ? "bg-[#FF4D00]/[0.12] border-[#FF4D00]/[0.3] text-[#FF4D00]"
-            : "border-transparent text-[#888888] hover:bg-white/[0.06] hover:text-[#D4D4D4]",
+            : "border-transparent text-[#C4C4C4] hover:bg-white/[0.06] hover:text-[#ffffff]",
         ].join(" ")}
       >
         <span className="shrink-0 flex items-center justify-center">{item.icon}</span>
@@ -124,10 +124,10 @@ export default function Sidebar({ isOpen, onToggle, activeId, onActiveChange }: 
           style={{ background: "radial-gradient(ellipse 80% 50% at 50% 0%, rgba(255,77,0,0.09) 0%, transparent 100%)" }}
         />
 
-        {/* ── TOP BAR ── */}
+        {/* ── TOP BAR — logo only, no toggle ── */}
         <div className={[
           "relative z-10 flex items-center shrink-0 border-b border-white/[0.07] py-5",
-          isOpen ? "px-5 justify-between" : "px-0 justify-center",
+          isOpen ? "px-5 justify-start" : "px-0 justify-center",
         ].join(" ")}>
           <div className="flex items-center gap-3">
             <img src="/favicon.svg" alt="ResolveX Logo" width={36} height={36} className="shrink-0" />
@@ -138,26 +138,49 @@ export default function Sidebar({ isOpen, onToggle, activeId, onActiveChange }: 
               </p>
             )}
           </div>
-          <button
-            onClick={onToggle}
-            aria-label={isOpen ? "Collapse sidebar" : "Expand sidebar"}
-            className="flex items-center justify-center w-7 h-7 rounded-lg bg-white/[0.05] border border-white/[0.1] text-[#777] hover:text-[#FF4D00] hover:bg-[#FF4D00]/[0.08] hover:border-[#FF4D00]/[0.3] transition-all duration-200 cursor-pointer shrink-0"
-          >
-            {isOpen ? Icons.chevronLeft : Icons.chevronRight}
-          </button>
         </div>
 
         {/* ── NAV ── */}
         <nav className="relative z-10 flex-1 overflow-y-auto overflow-x-hidden py-6 px-3 flex flex-col gap-6">
 
-          {/* Main */}
+          {/* Main — label row WITH toggle button inline */}
           <div className="flex flex-col gap-1.5">
-            {isOpen && (
-              <p className="font-bold uppercase text-[#404040] px-4 mb-2" style={{ fontSize: 11, letterSpacing: "2.5px" }}>
-                Main
-              </p>
-            )}
-            {!isOpen && <div className="h-2" />}
+            <div className={[
+              "flex items-center mb-2",
+              isOpen ? "px-4 justify-between" : "justify-center",
+            ].join(" ")}>
+              {isOpen && (
+                <p className="font-bold uppercase text-[#6b6b6b]" style={{ fontSize: 11, letterSpacing: "2.5px" }}>
+                  Main
+                </p>
+              )}
+              {/* ── Toggle button — now lives here ── */}
+              <button
+                onClick={onToggle}
+                aria-label={isOpen ? "Collapse sidebar" : "Expand sidebar"}
+                className="flex items-center justify-center w-7 h-7 rounded-lg border cursor-pointer transition-all duration-200 shrink-0"
+                style={{
+                  background:   "rgba(255,255,255,0.08)",
+                  borderColor:  "rgba(255,255,255,0.18)",
+                  color:        "#D4D4D4",
+                }}
+                onMouseEnter={e => {
+                  (e.currentTarget as HTMLButtonElement).style.background     = "rgba(255,77,0,0.15)";
+                  (e.currentTarget as HTMLButtonElement).style.borderColor    = "rgba(255,77,0,0.5)";
+                  (e.currentTarget as HTMLButtonElement).style.color          = "#FF4D00";
+                }}
+                onMouseLeave={e => {
+                  (e.currentTarget as HTMLButtonElement).style.background     = "rgba(255,255,255,0.08)";
+                  (e.currentTarget as HTMLButtonElement).style.borderColor    = "rgba(255,255,255,0.18)";
+                  (e.currentTarget as HTMLButtonElement).style.color          = "#D4D4D4";
+                }}
+              >
+                {isOpen ? Icons.chevronLeft : Icons.chevronRight}
+              </button>
+            </div>
+
+            {!isOpen && <div className="h-1" />}
+
             <ul className="flex flex-col gap-1 p-0 m-0">
               {NAV_MAIN.map(item => (
                 <NavRow key={item.id} item={item} isOpen={isOpen} isActive={activeId === item.id} onClick={onActiveChange} />
@@ -170,7 +193,7 @@ export default function Sidebar({ isOpen, onToggle, activeId, onActiveChange }: 
           {/* Trial */}
           <div className="flex flex-col gap-1.5">
             {isOpen && (
-              <p className="font-bold uppercase text-[#404040] px-4 mb-2" style={{ fontSize: 11, letterSpacing: "2.5px" }}>
+              <p className="font-bold uppercase text-[#6b6b6b] px-4 mb-2" style={{ fontSize: 11, letterSpacing: "2.5px" }}>
                 Trial
               </p>
             )}

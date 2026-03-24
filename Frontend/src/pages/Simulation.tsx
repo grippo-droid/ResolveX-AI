@@ -2,17 +2,13 @@ import { useState, useEffect, useRef } from "react";
 
 // ── Types ──────────────────────────────────────────────────────────────────
 type Category = "access" | "hardware" | "software" | "network" | "security" | "other";
-type Priority = "low" | "medium" | "high" | "critical";
 type Decision = "auto-resolved" | "human-review" | "escalated";
 
 interface TicketForm {
   title:       string;
   category:    Category | "";
-  priority:    Priority | "";
   description: string;
-  system:      string;
   user:        string;
-  department:  string;
   image:       File | null;
 }
 
@@ -26,7 +22,7 @@ interface AIResult {
   processingTime: number;
 }
 
-// ── Ticket History Entry (saved to localStorage) ───────────────────────────
+// ── Ticket History Entry ───────────────────────────────────────────────────
 export interface TicketHistoryEntry {
   ticketId:       string;
   title:          string;
@@ -43,7 +39,7 @@ export interface TicketHistoryEntry {
   explanation:    string;
   processingTime: number;
   hasImage:       boolean;
-  submittedAt:    string; // ISO string
+  submittedAt:    string;
 }
 
 const HISTORY_KEY = "resolvex_ticket_history";
@@ -54,10 +50,10 @@ function saveTicketToHistory(form: TicketForm, result: AIResult) {
     ticketId:       result.ticketId,
     title:          form.title,
     category:       form.category,
-    priority:       form.priority,
+    priority:       "medium",
     user:           form.user,
-    department:     form.department,
-    system:         form.system,
+    department:     "",
+    system:         "",
     description:    form.description,
     decision:       result.decision,
     confidence:     result.confidence,
@@ -106,10 +102,6 @@ function simulateAI(form: TicketForm): Promise<AIResult> {
       explanation= form.image
         ? "Screenshot attachment increased confidence score. Visual evidence helps hardware team prioritize and diagnose remotely."
         : "Hardware issues cannot be auto-resolved remotely. Escalated to hardware support queue for physical inspection.";
-    } else if (form.priority === "critical") {
-      confidence = 22; intent = "Critical Priority Issue";
-      fix        = "Due to critical priority, this ticket has been immediately escalated to the senior IT team.";
-      explanation= "Policy engine override: critical priority tickets always require human review regardless of confidence score.";
     } else if (title.includes("slow") || title.includes("performance") || desc.includes("slow")) {
       confidence = 71; intent = "Performance Degradation";
       fix        = "Cleared browser cache and temp files remotely. Restarted background services on your workstation. Please test performance now.";
@@ -119,15 +111,9 @@ function simulateAI(form: TicketForm): Promise<AIResult> {
     if (form.image && confidence < 95) confidence = Math.min(confidence + 6, 99);
 
     let decision: Decision;
-    if (form.priority === "critical" || (form.priority === "high" && confidence < 70)) {
-      decision = "escalated"; confidence = Math.min(confidence, 45);
-    } else if (confidence >= 80) {
-      decision = "auto-resolved";
-    } else if (confidence >= 55) {
-      decision = "human-review";
-    } else {
-      decision = "escalated";
-    }
+    if (confidence >= 80)      decision = "auto-resolved";
+    else if (confidence >= 55) decision = "human-review";
+    else                       decision = "escalated";
 
     const processingTime = 1800 + Math.random() * 800;
     setTimeout(() => resolve({
@@ -149,23 +135,10 @@ const CATEGORIES: { value: Category; label: string; icon: string }[] = [
   { value: "other",    label: "Other",                 icon: "📋" },
 ];
 
-const PRIORITIES: { value: Priority; label: string; color: string }[] = [
-  { value: "low",      label: "Low",      color: "#6B6B6B" },
-  { value: "medium",   label: "Medium",   color: "#b45309" },
-  { value: "high",     label: "High",     color: "#FF4D00" },
-  { value: "critical", label: "Critical", color: "#dc2626" },
-];
-
-const SYSTEMS = [
-  "Microsoft Outlook", "VPN Client", "Active Directory", "Slack",
-  "Jira", "GitHub", "AWS Console", "SAP", "Salesforce", "Workday",
-  "Zoom", "Microsoft Teams", "Laptop / Desktop", "Printer", "Other",
-];
-
 const DECISION_META: Record<Decision, { label: string; color: string; bg: string; border: string }> = {
-  "auto-resolved": { label: "Auto Resolved",  color: "#15803d", bg: "#f0fdf4", border: "#bbf7d0" },
-  "human-review":  { label: "Under Review",   color: "#b45309", bg: "#fffbeb", border: "#fde68a" },
-  "escalated":     { label: "Escalated",      color: "#FF4D00", bg: "#fff7f5", border: "#ffd0c0" },
+  "auto-resolved": { label: "Auto Resolved", color: "#15803d", bg: "#f0fdf4", border: "#bbf7d0" },
+  "human-review":  { label: "Under Review",  color: "#b45309", bg: "#fffbeb", border: "#fde68a" },
+  "escalated":     { label: "Escalated",     color: "#FF4D00", bg: "#fff7f5", border: "#ffd0c0" },
 };
 
 const AUTO_RESET_SECONDS = 5;
@@ -173,8 +146,7 @@ const AUTO_RESET_SECONDS = 5;
 // ── Main ───────────────────────────────────────────────────────────────────
 export default function Simulation() {
   const [form, setForm] = useState<TicketForm>({
-    title: "", category: "", priority: "", description: "",
-    system: "", user: "", department: "", image: null,
+    title: "", category: "", description: "", user: "", image: null,
   });
   const [errors, setErrors]             = useState<Partial<Record<keyof TicketForm, string>>>({});
   const [phase, setPhase]               = useState<"form" | "processing" | "thankyou">("form");
@@ -185,23 +157,18 @@ export default function Simulation() {
   const fileInputRef                    = useRef<HTMLInputElement>(null);
   const countdownRef                    = useRef<ReturnType<typeof setInterval> | null>(null);
 
-  // Auto-reset countdown after thank you screen
   useEffect(() => {
     if (phase !== "thankyou") return;
     setCountdown(AUTO_RESET_SECONDS);
     countdownRef.current = setInterval(() => {
       setCountdown(prev => {
-        if (prev <= 1) {
-          if (countdownRef.current) clearInterval(countdownRef.current);
-          return 0;
-        }
+        if (prev <= 1) { if (countdownRef.current) clearInterval(countdownRef.current); return 0; }
         return prev - 1;
       });
     }, 1000);
     return () => { if (countdownRef.current) clearInterval(countdownRef.current); };
   }, [phase]);
 
-  // Trigger reset when countdown hits 0
   useEffect(() => {
     if (countdown === 0 && phase === "thankyou") handleReset();
   }, [countdown, phase]);
@@ -210,7 +177,6 @@ export default function Simulation() {
     const e: Partial<Record<keyof TicketForm, string>> = {};
     if (!form.title.trim())       e.title       = "Title is required";
     if (!form.category)           e.category    = "Please select a category";
-    if (!form.priority)           e.priority    = "Please select a priority";
     if (!form.description.trim()) e.description = "Description is required";
     if (!form.user.trim())        e.user        = "Your name is required";
     setErrors(e);
@@ -233,7 +199,7 @@ export default function Simulation() {
 
   const handleReset = () => {
     if (countdownRef.current) clearInterval(countdownRef.current);
-    setForm({ title: "", category: "", priority: "", description: "", system: "", user: "", department: "", image: null });
+    setForm({ title: "", category: "", description: "", user: "", image: null });
     setErrors({}); setResult(null); setImagePreview(null); setPhase("form");
   };
 
@@ -259,20 +225,19 @@ export default function Simulation() {
   return (
     <>
       <style>{`
-        @keyframes fadeUp    { from{ opacity:0; transform:translateY(16px); } to{ opacity:1; transform:translateY(0); } }
-        @keyframes fadeIn    { from{ opacity:0; } to{ opacity:1; } }
-        @keyframes spin      { to{ transform:rotate(360deg); } }
-        @keyframes pulse     { 0%,100%{ opacity:1; } 50%{ opacity:0.4; } }
-        @keyframes slideUp   { from{ opacity:0; transform:translateY(32px); } to{ opacity:1; transform:translateY(0); } }
-        @keyframes checkPop  { 0%{ transform:scale(0) rotate(-10deg); opacity:0; } 70%{ transform:scale(1.15) rotate(3deg); } 100%{ transform:scale(1) rotate(0deg); opacity:1; } }
-        @keyframes shrink    { from{ width:100%; } to{ width:0%; } }
+        @keyframes fadeUp   { from{ opacity:0; transform:translateY(16px); } to{ opacity:1; transform:translateY(0); } }
+        @keyframes fadeIn   { from{ opacity:0; } to{ opacity:1; } }
+        @keyframes spin     { to{ transform:rotate(360deg); } }
+        @keyframes pulse    { 0%,100%{ opacity:1; } 50%{ opacity:0.4; } }
+        @keyframes slideUp  { from{ opacity:0; transform:translateY(32px); } to{ opacity:1; transform:translateY(0); } }
+        @keyframes checkPop { 0%{ transform:scale(0) rotate(-10deg); opacity:0; } 70%{ transform:scale(1.15) rotate(3deg); } 100%{ transform:scale(1) rotate(0deg); opacity:1; } }
 
-        .fade-up   { animation: fadeUp  0.45s ease both; }
-        .fade-in   { animation: fadeIn  0.3s  ease both; }
-        .slide-up  { animation: slideUp 0.5s  cubic-bezier(0.22,1,0.36,1) both; }
-        .spinner   { animation: spin    0.8s  linear infinite; }
-        .pulse-dot { animation: pulse   1.4s  ease-in-out infinite; }
-        .check-pop { animation: checkPop 0.6s cubic-bezier(0.22,1,0.36,1) both; }
+        .fade-up   { animation: fadeUp   0.45s ease both; }
+        .fade-in   { animation: fadeIn   0.3s  ease both; }
+        .slide-up  { animation: slideUp  0.5s  cubic-bezier(0.22,1,0.36,1) both; }
+        .spinner   { animation: spin     0.8s  linear infinite; }
+        .pulse-dot { animation: pulse    1.4s  ease-in-out infinite; }
+        .check-pop { animation: checkPop 0.6s  cubic-bezier(0.22,1,0.36,1) both; }
 
         .input-base {
           width:100%; background:white;
@@ -302,9 +267,10 @@ export default function Simulation() {
       {phase === "form" && (
         <div className="fade-up flex flex-col lg:flex-row gap-5 items-start">
 
-          {/* LEFT: Theory panel */}
-          <div className="lg:w-[270px] shrink-0 flex flex-col gap-4">
+          {/* ── LEFT: Theory panel ── */}
+          <div className="lg:w-[260px] shrink-0 flex flex-col gap-4">
 
+            {/* Sim mode badge */}
             <div className="flex items-center gap-2.5 bg-[#FF4D00]/[0.07] border border-[#FF4D00]/20 rounded-xl px-4 py-3">
               <span className="pulse-dot w-1.5 h-1.5 rounded-full bg-[#FF4D00] shrink-0" />
               <span className="text-[12px] font-medium text-[#FF4D00] leading-snug">
@@ -312,6 +278,7 @@ export default function Simulation() {
               </span>
             </div>
 
+            {/* What happens */}
             <div className="bg-white rounded-2xl border border-black/10 p-5 flex flex-col gap-4">
               <p className="text-[13px] font-bold text-[#0A0A0A]">What happens when you submit?</p>
               {[
@@ -329,36 +296,24 @@ export default function Simulation() {
               ))}
             </div>
 
+            {/* Screenshot tip */}
             <div className="bg-white rounded-2xl border border-black/10 p-5 flex flex-col gap-3">
               <p className="text-[12px] font-bold text-[#0A0A0A]">💡 Pro tip — attach a screenshot</p>
               <p className="text-[12px] text-[#6B6B6B] leading-relaxed">
-                Attaching a screenshot of the error gives the AI more visual context, increasing the confidence score and enabling faster resolution.
+                Attaching a screenshot gives the AI more visual context, increasing confidence score and enabling faster resolution.
               </p>
               <span className="text-[11px] font-semibold px-2 py-0.5 rounded-full bg-[#16a34a]/10 text-[#16a34a] w-fit">
                 +6% confidence boost
               </span>
             </div>
 
-            <div className="bg-[#0A0A0A] rounded-2xl p-5 flex flex-col gap-3">
-              <p className="text-[11px] font-bold uppercase tracking-[1.4px] text-[#FF4D00]">Sample Outcomes</p>
-              {[
-                { label: "Password Reset",  status: "Auto Resolved", color: "#16a34a" },
-                { label: "Prod DB Access",  status: "Escalated",     color: "#FF4D00" },
-                { label: "Outlook Sync",    status: "Under Review",  color: "#b45309" },
-                { label: "VPN Not Working", status: "Auto Resolved", color: "#16a34a" },
-              ].map(o => (
-                <div key={o.label} className="flex items-center justify-between">
-                  <span className="text-[12px] text-[#888]">{o.label}</span>
-                  <span className="text-[11px] font-semibold px-2 py-0.5 rounded-full"
-                    style={{ color: o.color, background: o.color + "18" }}>{o.status}</span>
-                </div>
-              ))}
-            </div>
+            
           </div>
 
-          {/* RIGHT: Form */}
+          {/* ── RIGHT: Form ── */}
           <div className="flex-1 bg-white/70 border border-black/[0.08] rounded-2xl p-6 flex flex-col gap-5">
 
+            {/* Header */}
             <div>
               <div className="inline-flex items-center gap-2 bg-[#FF4D00]/10 border border-[#FF4D00]/20 text-[#FF4D00] text-[11px] font-bold tracking-widest uppercase px-3 py-1.5 rounded-full mb-3">
                 <span className="pulse-dot w-1.5 h-1.5 rounded-full bg-[#FF4D00]" />
@@ -372,79 +327,69 @@ export default function Simulation() {
               </p>
             </div>
 
-            {/* Name + Department */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div className="flex flex-col gap-1.5">
-                <label className="text-[13px] font-semibold text-[#0A0A0A]">Your Name <span className="text-[#FF4D00]">*</span></label>
-                <input type="text" placeholder="e.g. Sarah Johnson" value={form.user}
-                  onChange={e => update("user", e.target.value)}
-                  className={`input-base ${errors.user ? "input-error" : ""}`} />
-                {errors.user && <p className="text-xs text-red-600">{errors.user}</p>}
-              </div>
-              <div className="flex flex-col gap-1.5">
-                <label className="text-[13px] font-semibold text-[#0A0A0A]">Department</label>
-                <input type="text" placeholder="e.g. Engineering, Finance…" value={form.department}
-                  onChange={e => update("department", e.target.value)} className="input-base" />
-              </div>
+            {/* Submitted By */}
+            <div className="flex flex-col gap-1.5">
+              <label className="text-[13px] font-semibold text-[#0A0A0A]">
+                Submitted By <span className="text-[#FF4D00]">*</span>
+              </label>
+              <input
+                type="text"
+                placeholder="e.g. Sarah Johnson"
+                value={form.user}
+                onChange={e => update("user", e.target.value)}
+                className={`input-base ${errors.user ? "input-error" : ""}`}
+              />
+              {errors.user && <p className="text-xs text-red-600">{errors.user}</p>}
             </div>
 
-            {/* Title */}
+            {/* Issue Title */}
             <div className="flex flex-col gap-1.5">
-              <label className="text-[13px] font-semibold text-[#0A0A0A]">Issue Title <span className="text-[#FF4D00]">*</span></label>
-              <input type="text" placeholder="e.g. Cannot connect to VPN after system update" value={form.title}
+              <label className="text-[13px] font-semibold text-[#0A0A0A]">
+                Issue Title <span className="text-[#FF4D00]">*</span>
+              </label>
+              <input
+                type="text"
+                placeholder="e.g. Cannot connect to VPN after system update"
+                value={form.title}
                 onChange={e => update("title", e.target.value)}
-                className={`input-base ${errors.title ? "input-error" : ""}`} />
+                className={`input-base ${errors.title ? "input-error" : ""}`}
+              />
               {errors.title && <p className="text-xs text-red-600">{errors.title}</p>}
             </div>
 
-            {/* Category + Priority */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div className="flex flex-col gap-1.5">
-                <label className="text-[13px] font-semibold text-[#0A0A0A]">Category <span className="text-[#FF4D00]">*</span></label>
-                <select value={form.category} onChange={e => update("category", e.target.value)}
-                  className={`select-base ${errors.category ? "input-error" : ""}`}>
-                  <option value="">Select category…</option>
-                  {CATEGORIES.map(c => <option key={c.value} value={c.value}>{c.icon} {c.label}</option>)}
-                </select>
-                {errors.category && <p className="text-xs text-red-600">{errors.category}</p>}
-              </div>
-              <div className="flex flex-col gap-1.5">
-                <label className="text-[13px] font-semibold text-[#0A0A0A]">Priority <span className="text-[#FF4D00]">*</span></label>
-                <div className="flex gap-2 flex-wrap">
-                  {PRIORITIES.map(p => (
-                    <button key={p.value} type="button" onClick={() => update("priority", p.value)}
-                      className="flex-1 min-w-[60px] py-2.5 px-2 rounded-xl text-[12px] font-bold border-[1.5px] cursor-pointer transition-all duration-150"
-                      style={{
-                        borderColor: form.priority === p.value ? p.color : "rgba(10,10,10,0.1)",
-                        background:  form.priority === p.value ? p.color + "15" : "white",
-                        color:       form.priority === p.value ? p.color : "#6B6B6B",
-                      }}>
-                      {p.label}
-                    </button>
-                  ))}
-                </div>
-                {errors.priority && <p className="text-xs text-red-600">{errors.priority}</p>}
-              </div>
-            </div>
-
-            {/* Affected system */}
+            {/* Category */}
             <div className="flex flex-col gap-1.5">
-              <label className="text-[13px] font-semibold text-[#0A0A0A]">Affected System</label>
-              <select value={form.system} onChange={e => update("system", e.target.value)} className="select-base">
-                <option value="">Select affected system…</option>
-                {SYSTEMS.map(s => <option key={s} value={s}>{s}</option>)}
+              <label className="text-[13px] font-semibold text-[#0A0A0A]">
+                Category <span className="text-[#FF4D00]">*</span>
+              </label>
+              <select
+                value={form.category}
+                onChange={e => update("category", e.target.value)}
+                className={`select-base ${errors.category ? "input-error" : ""}`}
+              >
+                <option value="">Select category…</option>
+                {CATEGORIES.map(c => (
+                  <option key={c.value} value={c.value}>{c.icon} {c.label}</option>
+                ))}
               </select>
+              {errors.category && <p className="text-xs text-red-600">{errors.category}</p>}
             </div>
 
             {/* Description */}
             <div className="flex flex-col gap-1.5">
               <div className="flex items-center justify-between">
-                <label className="text-[13px] font-semibold text-[#0A0A0A]">Description <span className="text-[#FF4D00]">*</span></label>
+                <label className="text-[13px] font-semibold text-[#0A0A0A]">
+                  Description <span className="text-[#FF4D00]">*</span>
+                </label>
                 <span className="text-[11px] text-[#ABABAB]">{form.description.length}/500</span>
               </div>
-              <textarea placeholder="Describe the issue in detail. Include when it started, what you were doing, any error messages you saw…"
-                value={form.description} onChange={e => update("description", e.target.value.slice(0, 500))}
-                rows={4} className={`input-base resize-none ${errors.description ? "input-error" : ""}`} />
+              <textarea
+                placeholder="Describe the issue in detail. Include when it started, what you were doing, any error messages you saw…"
+                value={form.description}
+                onChange={e => update("description", e.target.value.slice(0, 500))}
+                rows={5}
+                className={`input-base resize-none ${errors.description ? "input-error" : ""}`}
+              />
               {errors.description && <p className="text-xs text-red-600">{errors.description}</p>}
             </div>
 
@@ -460,7 +405,7 @@ export default function Simulation() {
                   onDragLeave={() => setDragOver(false)}
                   onDrop={e => { e.preventDefault(); setDragOver(false); handleFile(e.dataTransfer.files?.[0] ?? null); }}
                   onClick={() => fileInputRef.current?.click()}
-                  className="flex flex-col items-center justify-center gap-2 border-[1.5px] border-dashed rounded-xl py-7 cursor-pointer transition-all duration-200"
+                  className="flex flex-col items-center justify-center gap-2 border-[1.5px] border-dashed rounded-xl py-8 cursor-pointer transition-all duration-200"
                   style={{
                     borderColor: dragOver ? "#FF4D00" : "rgba(10,10,10,0.15)",
                     background:  dragOver ? "rgba(255,77,0,0.04)" : "white",
@@ -501,25 +446,6 @@ export default function Simulation() {
               )}
             </div>
 
-            {/* Sample tickets */}
-            <div className="flex flex-col gap-2">
-              <p className="text-[11px] font-bold tracking-[1.2px] uppercase text-[#ABABAB]">Try a sample ticket</p>
-              <div className="flex flex-wrap gap-2">
-                {[
-                  { label: "Password reset", title: "Need to reset my LDAP password",    category: "access"   as Category, priority: "medium" as Priority, desc: "I forgot my LDAP password and cannot log into my workstation or any internal tools. I need an urgent password reset.", system: "Active Directory" },
-                  { label: "VPN issue",       title: "VPN not connecting after update",   category: "network"  as Category, priority: "high"   as Priority, desc: "After the latest Windows update, I cannot connect to the company VPN. It shows 'Authentication failed' even though my credentials are correct.", system: "VPN Client" },
-                  { label: "Access request",  title: "Request access to Production DB",  category: "access"   as Category, priority: "high"   as Priority, desc: "I need read access to the production database to investigate a client reported data discrepancy. Please grant access at the earliest.", system: "AWS Console" },
-                  { label: "Outlook sync",    title: "Outlook not syncing emails",        category: "software" as Category, priority: "medium" as Priority, desc: "Outlook stopped syncing about 2 hours ago. New emails are not appearing. I have tried restarting the app but the issue persists.", system: "Microsoft Outlook" },
-                ].map(ex => (
-                  <button key={ex.label} type="button"
-                    onClick={() => setForm(prev => ({ ...prev, title: ex.title, category: ex.category, priority: ex.priority, description: ex.desc, system: ex.system }))}
-                    className="text-[12px] font-medium text-[#6B6B6B] bg-white border border-black/10 px-3 py-1.5 rounded-lg hover:border-[#FF4D00]/40 hover:text-[#FF4D00] hover:bg-[#FF4D00]/5 transition-all duration-150 cursor-pointer">
-                    {ex.label}
-                  </button>
-                ))}
-              </div>
-            </div>
-
             {/* Submit */}
             <div className="flex items-center gap-4 pt-2 border-t border-black/[0.07]">
               <button type="button" onClick={handleSubmit}
@@ -538,7 +464,7 @@ export default function Simulation() {
       )}
 
       {/* ══════════════════════════════════════════
-          PHASE: PROCESSING (clean spinner only)
+          PHASE: PROCESSING
       ══════════════════════════════════════════ */}
       {phase === "processing" && (
         <div className="fade-in flex flex-col items-center justify-center min-h-[60vh] text-center gap-6">
@@ -569,9 +495,8 @@ export default function Simulation() {
       ══════════════════════════════════════════ */}
       {phase === "thankyou" && result && (() => {
         const meta = DECISION_META[result.decision];
-        const priorityColor = PRIORITIES.find(p => p.value === form.priority)?.color ?? "#6B6B6B";
         return (
-          <div className="slide-up flex flex-col items-center justify-center min-h-[60vh] gap-0">
+          <div className="slide-up flex flex-col items-center justify-center min-h-[60vh]">
             <div className="w-full max-w-[520px] flex flex-col items-center gap-6">
 
               {/* Check icon */}
@@ -587,7 +512,7 @@ export default function Simulation() {
                   Ticket Submitted!
                 </h2>
                 <p className="text-[14px] text-[#6B6B6B] leading-relaxed max-w-[380px] mx-auto">
-                  Thank you, <strong className="text-[#0A0A0A]">{form.user}</strong>. Your ticket has been received and our AI engine has processed it. You can track the status in Ticket History.
+                  Thank you, <strong className="text-[#0A0A0A]">{form.user}</strong>. Your ticket has been received and processed. Track the status in Ticket History.
                 </p>
               </div>
 
@@ -611,10 +536,6 @@ export default function Simulation() {
                     <div className="flex flex-wrap gap-2 mt-2">
                       <span className="text-[11px] font-semibold px-2.5 py-1 rounded-full bg-black/[0.06] text-[#6B6B6B]">
                         {CATEGORIES.find(c => c.value === form.category)?.icon} {CATEGORIES.find(c => c.value === form.category)?.label}
-                      </span>
-                      <span className="text-[11px] font-semibold px-2.5 py-1 rounded-full border"
-                        style={{ color: priorityColor, background: priorityColor + "14", borderColor: priorityColor + "44" }}>
-                        {form.priority.charAt(0).toUpperCase() + form.priority.slice(1)} Priority
                       </span>
                       {form.image && (
                         <span className="text-[11px] font-semibold px-2.5 py-1 rounded-full bg-[#16a34a]/10 text-[#16a34a]">
@@ -642,7 +563,7 @@ export default function Simulation() {
                     </div>
                   </div>
 
-                  {/* What's next note */}
+                  {/* What's next */}
                   <div className="flex items-start gap-3 bg-[#F5F5F5] rounded-xl px-4 py-3">
                     <svg width="15" height="15" viewBox="0 0 15 15" fill="none" className="shrink-0 mt-0.5 text-[#6B6B6B]">
                       <circle cx="7.5" cy="7.5" r="6" stroke="currentColor" strokeWidth="1.3"/>
@@ -653,36 +574,29 @@ export default function Simulation() {
                         ? "This ticket was auto-resolved by the AI. Check your email for confirmation. No further action required."
                         : result.decision === "human-review"
                         ? "A support engineer will review the AI's suggested fix and respond within 1 business day."
-                        : "This ticket has been escalated to the senior IT team due to its priority. Expect a response within 2 hours."}
+                        : "This ticket has been escalated to the senior IT team. Expect a response within 2 hours."}
                     </p>
                   </div>
                 </div>
               </div>
 
-              {/* Auto-reset countdown */}
+              {/* Countdown */}
               <div className="w-full flex flex-col gap-2">
                 <div className="flex items-center justify-between">
                   <p className="text-[12px] text-[#ABABAB]">Resetting form automatically…</p>
                   <span className="text-[12px] font-bold text-[#0A0A0A]">{countdown}s</span>
                 </div>
                 <div className="h-1 w-full bg-black/[0.07] rounded-full overflow-hidden">
-                  <div
-                    className="h-full bg-[#FF4D00] rounded-full"
-                    style={{
-                      width: `${(countdown / AUTO_RESET_SECONDS) * 100}%`,
-                      transition: "width 1s linear",
-                    }}
-                  />
+                  <div className="h-full bg-[#FF4D00] rounded-full"
+                    style={{ width: `${(countdown / AUTO_RESET_SECONDS) * 100}%`, transition: "width 1s linear" }} />
                 </div>
               </div>
 
-              {/* Actions */}
-              <div className="flex items-center gap-3">
-                <button onClick={handleReset}
-                  className="flex items-center gap-2 bg-[#0A0A0A] text-[#E9E9E9] text-[13px] font-bold px-5 py-2.5 rounded-xl border-none cursor-pointer hover:bg-[#1a1a1a] transition-all">
-                  Submit Another Ticket
-                </button>
-              </div>
+              {/* Action */}
+              <button onClick={handleReset}
+                className="flex items-center gap-2 bg-[#0A0A0A] text-[#E9E9E9] text-[13px] font-bold px-5 py-2.5 rounded-xl border-none cursor-pointer hover:bg-[#1a1a1a] transition-all">
+                Submit Another Ticket
+              </button>
 
             </div>
           </div>
