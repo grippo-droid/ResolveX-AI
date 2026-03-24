@@ -1,0 +1,1 @@
+"""ResolveX-AI application package."""
