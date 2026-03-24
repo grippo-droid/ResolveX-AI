@@ -188,7 +188,7 @@ export default function LandingPage() {
   const { ref: securityRef, inView: securityInView } = useInView(0.3);
 
   const heroSubText =
-    "ResolveX-AI classifies, scores, and resolves support tickets at enterprise scale — automatically when confident, safely escalating when not.";
+    "ResolveX-AI classifies, scores, and resolves support tickets at enterprise scale — automatically when confident, safely escalating when not.------------------";
   const typedSub = useTypewriter(heroSubText, 18, heroReady);
 
   useEffect(() => {
