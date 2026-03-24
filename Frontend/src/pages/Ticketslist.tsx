@@ -34,6 +34,11 @@ const CATEGORY_LABELS: Record<string, string> = {
 };
 
 // ── Helpers ────────────────────────────────────────────────────────────────
+function toPercent(raw: number | null | undefined): number {
+  if (!raw) return 0;
+  return raw <= 1 ? Math.round(raw * 100) : Math.round(raw);
+}
+
 function timeAgo(iso: string): string {
   const diff = Math.floor((Date.now() - new Date(iso).getTime()) / 1000);
   if (diff < 60)    return `${diff}s ago`;
@@ -50,18 +55,21 @@ function formatDate(iso: string): string {
 }
 
 function normalizeDecision(ticket: TicketAPIResponse): Decision {
-  if (ticket.decision === "auto-resolved") return "auto-resolved";
-  if (ticket.decision === "escalated")     return "escalated";
+  const val = (ticket.decision ?? ticket.status ?? "").toLowerCase().replace("_", "-");
+  if (val === "auto-resolved") return "auto-resolved";
+  if (val === "escalated")     return "escalated";
   return "human-review";
 }
 
 function getStatusColor(status: string): { color: string; bg: string } {
-  switch (status) {
-    case "open":        return { color: "#2563eb", bg: "#eff6ff" };
-    case "in-progress": return { color: "#b45309", bg: "#fffbeb" };
-    case "resolved":    return { color: "#15803d", bg: "#f0fdf4" };
-    case "closed":      return { color: "#6B6B6B", bg: "#F5F5F5" };
-    default:            return { color: "#6B6B6B", bg: "#F5F5F5" };
+  const s = (status ?? "").toLowerCase().replace("_", "-");
+  switch (s) {
+    case "open":          return { color: "#2563eb", bg: "#eff6ff" };
+    case "in-progress":   return { color: "#b45309", bg: "#fffbeb" };
+    case "resolved":      return { color: "#15803d", bg: "#f0fdf4" };
+    case "closed":        return { color: "#6B6B6B", bg: "#F5F5F5" };
+    case "auto-resolved": return { color: "#15803d", bg: "#f0fdf4" }; // ✅
+    default:              return { color: "#6B6B6B", bg: "#F5F5F5" };
   }
 }
 
@@ -79,12 +87,11 @@ function TicketDetailDrawer({
 }) {
   const decision    = normalizeDecision(ticket);
   const dec         = DECISION_META[decision];
-  const conf        = ticket.confidence ?? 0;
+  const conf        = toPercent(ticket.confidence);
   const confColor   = conf >= 80 ? "#15803d" : conf >= 55 ? "#b45309" : "#FF4D00";
   const radius      = 40;
   const circ        = 2 * Math.PI * radius;
   const offset      = circ - (conf / 100) * circ;
-  const statusStyle = getStatusColor(ticket.status ?? "open");
 
   const [assignee,    setAssignee]    = useState(ticket.assigned_to ?? "");
   const [saving,      setSaving]      = useState(false);
@@ -122,7 +129,7 @@ function TicketDetailDrawer({
       onClick={onClose}
     >
       <div
-        className="w-full max-w-[640px] bg-white rounded-2xl shadow-2xl overflow-hidden"
+        className="w-full max-w-[950px] bg-white rounded-2xl shadow-2xl overflow-hidden"
         style={{ maxHeight: "90vh" }}
         onClick={e => e.stopPropagation()}
       >
@@ -139,8 +146,8 @@ function TicketDetailDrawer({
                 TKT-{String(ticket.id).padStart(5, "0")}
               </span>
               <span className="text-[11px] font-bold px-2.5 py-0.5 rounded-full"
-                style={{ color: statusStyle.color, background: statusStyle.bg }}>
-                {localStatus}
+                style={{ color: getStatusColor(localStatus).color, background: getStatusColor(localStatus).bg }}>
+                {localStatus.charAt(0).toUpperCase() + localStatus.slice(1)}
               </span>
               {saveSuccess && (
                 <span className="text-[11px] font-semibold text-[#15803d] bg-[#f0fdf4] px-2 py-0.5 rounded-full">
@@ -148,7 +155,7 @@ function TicketDetailDrawer({
                 </span>
               )}
             </div>
-            <h3 className="text-[16px] font-extrabold text-[#0A0A0A] leading-snug max-w-[460px]">
+            <h3 className="text-[16px] font-extrabold text-[#0A0A0A] leading-snug max-w-[620px]">
               {ticket.title}
             </h3>
           </div>
@@ -210,27 +217,42 @@ function TicketDetailDrawer({
           <div className="bg-[#F9F9F9] rounded-2xl border border-black/[0.07] p-4 flex flex-col gap-4">
             <p className="text-[12px] font-bold text-[#0A0A0A] uppercase tracking-[1px]">⚙️ Admin Actions</p>
 
-            {/* Status change */}
-            <div className="flex flex-col gap-1.5">
-              <label className="text-[11px] font-semibold text-[#6B6B6B]">Change Status</label>
-              <div className="flex gap-2 flex-wrap">
-                {STATUS_OPTIONS.map(s => {
-                  const sc = getStatusColor(s);
-                  return (
-                    <button key={s} onClick={() => handleStatusChange(s)}
-                      disabled={saving}
-                      className="text-[11px] font-bold px-3 py-1.5 rounded-lg border cursor-pointer transition-all disabled:opacity-50"
-                      style={{
-                        color:       localStatus === s ? sc.color : "#6B6B6B",
-                        background:  localStatus === s ? sc.bg    : "white",
-                        borderColor: localStatus === s ? sc.color : "rgba(10,10,10,0.12)",
-                      }}>
-                      {s.charAt(0).toUpperCase() + s.slice(1)}
-                    </button>
-                  );
-                })}
+            {/* Auto-resolved notice */}
+            {decision === "auto-resolved" && (
+              <div className="flex items-center gap-3 bg-[#f0fdf4] border border-[#bbf7d0] rounded-xl px-4 py-3">
+                <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+                  <circle cx="8" cy="8" r="6.5" stroke="#15803d" strokeWidth="1.4"/>
+                  <path d="M5 8l2 2 4-4" stroke="#15803d" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                </svg>
+                <p className="text-[12px] font-semibold text-[#15803d]">
+                  This ticket was auto-resolved and automatically closed by the AI.
+                </p>
               </div>
-            </div>
+            )}
+
+            {/* Status change — hidden for auto-resolved */}
+            {decision !== "auto-resolved" && (
+              <div className="flex flex-col gap-1.5">
+                <label className="text-[11px] font-semibold text-[#6B6B6B]">Change Status</label>
+                <div className="flex gap-2 flex-wrap">
+                  {STATUS_OPTIONS.map(s => {
+                    const sc = getStatusColor(s);
+                    return (
+                      <button key={s} onClick={() => handleStatusChange(s)}
+                        disabled={saving}
+                        className="text-[11px] font-bold px-3 py-1.5 rounded-lg border cursor-pointer transition-all disabled:opacity-50"
+                        style={{
+                          color:       localStatus === s ? sc.color : "#6B6B6B",
+                          background:  localStatus === s ? sc.bg    : "white",
+                          borderColor: localStatus === s ? sc.color : "rgba(10,10,10,0.12)",
+                        }}>
+                        {s.charAt(0).toUpperCase() + s.slice(1)}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
 
             {/* Assign to */}
             <div className="flex flex-col gap-1.5">
@@ -246,6 +268,39 @@ function TicketDetailDrawer({
                 </button>
               </div>
             </div>
+
+            {/* Close Ticket — escalated only, not yet closed */}
+            {decision === "escalated" && localStatus !== "closed" && (
+              <div className="flex flex-col gap-1.5">
+                <label className="text-[11px] font-semibold text-[#6B6B6B]">Close Ticket</label>
+                <button
+                  onClick={() => handleStatusChange("closed")}
+                  disabled={saving}
+                  className="flex items-center gap-2 w-fit text-[12px] font-bold px-4 py-2.5 rounded-xl border-none cursor-pointer transition-all disabled:opacity-50"
+                  style={{ background: "#FF4D00", color: "white" }}>
+                  <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
+                    <path d="M2 2l8 8M10 2l-8 8" stroke="white" strokeWidth="1.6" strokeLinecap="round"/>
+                  </svg>
+                  {saving ? "Closing…" : "Close this Ticket"}
+                </button>
+                <p className="text-[11px] text-[#ABABAB]">
+                  This ticket was escalated. Manually close it once the issue is resolved.
+                </p>
+              </div>
+            )}
+
+            {/* Escalated — already closed */}
+            {decision === "escalated" && localStatus === "closed" && (
+              <div className="flex items-center gap-2 bg-[#f0fdf4] border border-[#bbf7d0] rounded-xl px-4 py-3">
+                <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+                  <circle cx="7" cy="7" r="5.5" stroke="#15803d" strokeWidth="1.4"/>
+                  <path d="M4.5 7l1.5 1.5 3-3" stroke="#15803d" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"/>
+                </svg>
+                <p className="text-[12px] font-semibold text-[#15803d]">
+                  This escalated ticket has been closed by an admin.
+                </p>
+              </div>
+            )}
           </div>
 
           {/* ── Description ── */}
@@ -256,7 +311,7 @@ function TicketDetailDrawer({
             </div>
           </div>
 
-          {/* ── AI Suggested Fix ✅ formatAIText ── */}
+          {/* ── AI Suggested Fix ── */}
           {(ticket.suggested_fix ?? ticket.solution) && (
             <div className="flex flex-col gap-1.5">
               <div className="flex items-center gap-2">
@@ -269,13 +324,12 @@ function TicketDetailDrawer({
                 <p className="text-[11px] font-bold uppercase tracking-[1.2px] text-[#6B6B6B]">AI Suggested Fix</p>
               </div>
               <div className="bg-[#F5F5F5] rounded-xl p-4">
-                {/* ✅ Formatted — replaces raw <p> tag */}
                 {formatAIText(ticket.suggested_fix ?? ticket.solution ?? "")}
               </div>
             </div>
           )}
 
-          {/* ── Explainability ✅ formatAIText ── */}
+          {/* ── Explainability ── */}
           {ticket.explanation && (
             <div className="flex flex-col gap-1.5">
               <div className="flex items-center gap-2">
@@ -291,7 +345,6 @@ function TicketDetailDrawer({
                 </span>
               </div>
               <div className="bg-[#F5F5F5] rounded-xl p-4">
-                {/* ✅ Formatted — replaces raw <p> tag */}
                 {formatAIText(ticket.explanation)}
               </div>
             </div>
@@ -363,22 +416,21 @@ function DeleteConfirmModal({
 
 // ── Main ───────────────────────────────────────────────────────────────────
 export default function TicketsList() {
-  const [tickets,        setTickets]        = useState<TicketAPIResponse[]>([]);
-  const [total,          setTotal]          = useState(0);
-  const [loading,        setLoading]        = useState(true);
-  const [error,          setError]          = useState<string | null>(null);
-  const [selected,       setSelected]       = useState<TicketAPIResponse | null>(null);
-  const [deleteTarget,   setDeleteTarget]   = useState<TicketAPIResponse | null>(null);
-  const [deleting,       setDeleting]       = useState(false);
-  const [toastMsg,       setToastMsg]       = useState<string | null>(null);
+  const [tickets,      setTickets]      = useState<TicketAPIResponse[]>([]);
+  const [total,        setTotal]        = useState(0);
+  const [loading,      setLoading]      = useState(true);
+  const [error,        setError]        = useState<string | null>(null);
+  const [selected,     setSelected]     = useState<TicketAPIResponse | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<TicketAPIResponse | null>(null);
+  const [deleting,     setDeleting]     = useState(false);
+  const [toastMsg,     setToastMsg]     = useState<string | null>(null);
 
-  // Filters
-  const [search,         setSearch]         = useState("");
-  const [filterDecision, setFilterDecision] = useState<"all" | Decision>("all");
-  const [filterStatus,   setFilterStatus]   = useState<string>("all");
-  const [sortField,      setSortField]      = useState<SortField>("created_at");
-  const [sortOrder,      setSortOrder]      = useState<SortOrder>("desc");
-  const [page,           setPage]           = useState(1);
+  // Filters — filterDecision removed, all filtering by status now
+  const [search,       setSearch]       = useState("");
+  const [filterStatus, setFilterStatus] = useState<string>("all");
+  const [sortField,    setSortField]    = useState<SortField>("created_at");
+  const [sortOrder,    setSortOrder]    = useState<SortOrder>("desc");
+  const [page,         setPage]         = useState(1);
   const PAGE_SIZE = 20;
 
   // ── Toast ──────────────────────────────────────────────────────────────
@@ -397,7 +449,28 @@ export default function TicketsList() {
         PAGE_SIZE,
         filterStatus !== "all" ? filterStatus : undefined,
       );
-      setTickets(data.tickets);
+
+      // ✅ Auto-close all auto-resolved tickets that aren't already closed
+const autoClosedTickets = await Promise.all(
+  data.tickets.map(async (t) => {
+    const decision = normalizeDecision(t);
+    // ✅ catches "Auto_resolved", "auto-resolved", "auto_resolved" all
+    const alreadyClosed = t.status?.toLowerCase() === "closed";
+
+    if (decision === "auto-resolved" && !alreadyClosed) {
+      try {
+        await updateTicket(t.id, { status: "closed" });
+        return { ...t, status: "closed" };  // ✅ update in memory too
+      } catch (e) {
+        console.error(`❌ Failed to auto-close ticket ${t.id}`, e);
+        return { ...t, status: "closed" };  // ✅ still show closed in UI even if API fails
+      }
+    }
+    return t;
+  })
+);
+
+      setTickets(autoClosedTickets);
       setTotal(data.total);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to load tickets");
@@ -443,17 +516,17 @@ export default function TicketsList() {
   };
 
   // ── Client-side filter + sort ──────────────────────────────────────────
+  // ✅ filterStatus handled server-side via getTickets param
+  // ✅ client-side filters only search now
   const filtered = tickets
     .filter(t => {
-      const decision    = normalizeDecision(t);
-      const matchDec    = filterDecision === "all" || decision === filterDecision;
       const matchSearch =
         !search.trim() ||
         t.title.toLowerCase().includes(search.toLowerCase()) ||
         (t.submitted_by ?? "").toLowerCase().includes(search.toLowerCase()) ||
         (t.assigned_to  ?? "").toLowerCase().includes(search.toLowerCase()) ||
         String(t.id).includes(search);
-      return matchDec && matchSearch;
+      return matchSearch;
     })
     .sort((a, b) => {
       let valA: number | string = 0;
@@ -462,7 +535,8 @@ export default function TicketsList() {
         valA = new Date(a.created_at ?? 0).getTime();
         valB = new Date(b.created_at ?? 0).getTime();
       } else if (sortField === "confidence") {
-        valA = a.confidence ?? 0; valB = b.confidence ?? 0;
+        valA = toPercent(a.confidence);
+        valB = toPercent(b.confidence);
       } else if (sortField === "id") {
         valA = a.id; valB = b.id;
       } else if (sortField === "status") {
@@ -473,12 +547,18 @@ export default function TicketsList() {
       return 0;
     });
 
-  const counts = {
-    all:             tickets.length,
-    "auto-resolved": tickets.filter(t => normalizeDecision(t) === "auto-resolved").length,
-    "human-review":  tickets.filter(t => normalizeDecision(t) === "human-review").length,
-    "escalated":     tickets.filter(t => normalizeDecision(t) === "escalated").length,
-  };
+  // ✅ Counts by actual ticket status
+const counts = {
+  all:        tickets.length,
+  open:       tickets.filter(t => t.status?.toLowerCase() === "open").length,
+  inProgress: tickets.filter(t => t.status?.toLowerCase() === "in-progress").length,
+  resolved:   tickets.filter(t => t.status?.toLowerCase() === "resolved").length,
+  closed:     tickets.filter(t =>
+    t.status?.toLowerCase() === "closed" ||
+    t.status?.toLowerCase() === "auto_resolved" ||   // ✅ backend raw value
+    t.status?.toLowerCase() === "auto-resolved"      // ✅ normalized value
+  ).length,
+};
 
   const toggleSort = (field: SortField) => {
     if (sortField === field) setSortOrder(o => o === "asc" ? "desc" : "asc");
@@ -578,24 +658,25 @@ export default function TicketsList() {
           </button>
         </div>
 
-        {/* ── Stats Cards ── */}
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+        {/* ── Stats Cards — by status ✅ ── */}
+        <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
           {[
-            { key: "all",           label: "Total",         color: "#0A0A0A", bg: "white"   },
-            { key: "auto-resolved", label: "Auto Resolved", color: "#15803d", bg: "#f0fdf4" },
-            { key: "human-review",  label: "Under Review",  color: "#b45309", bg: "#fffbeb" },
-            { key: "escalated",     label: "Escalated",     color: "#FF4D00", bg: "#fff7f5" },
+            { key: "all",          label: "Total",       color: "#0A0A0A", bg: "white",   count: counts.all        },
+            { key: "open",         label: "Open",        color: "#2563eb", bg: "#eff6ff", count: counts.open       },
+            { key: "in-progress",  label: "In Progress", color: "#b45309", bg: "#fffbeb", count: counts.inProgress },
+            { key: "resolved",     label: "Resolved",    color: "#15803d", bg: "#f0fdf4", count: counts.resolved   },
+            { key: "closed",       label: "Closed",      color: "#6B6B6B", bg: "#F5F5F5", count: counts.closed     },
           ].map(s => (
             <button key={s.key}
-              onClick={() => setFilterDecision(s.key as typeof filterDecision)}
+              onClick={() => { setFilterStatus(s.key === "all" ? "all" : s.key); setPage(1); }}
               className="flex flex-col gap-1 p-4 rounded-2xl border text-left cursor-pointer transition-all duration-150"
               style={{
-                background:  filterDecision === s.key ? s.bg    : "white",
-                borderColor: filterDecision === s.key ? s.color + "44" : "rgba(10,10,10,0.08)",
-                boxShadow:   filterDecision === s.key ? `0 0 0 1.5px ${s.color}33` : "none",
+                background:  filterStatus === s.key ? s.bg    : "white",
+                borderColor: filterStatus === s.key ? s.color + "44" : "rgba(10,10,10,0.08)",
+                boxShadow:   filterStatus === s.key ? `0 0 0 1.5px ${s.color}33` : "none",
               }}>
               <span className="text-[28px] font-extrabold leading-none" style={{ color: s.color }}>
-                {counts[s.key as keyof typeof counts]}
+                {s.count}
               </span>
               <span className="text-[12px] font-semibold text-[#6B6B6B]">{s.label}</span>
             </button>
@@ -616,7 +697,10 @@ export default function TicketsList() {
             />
           </div>
 
-          <select value={filterStatus} onChange={e => { setFilterStatus(e.target.value); setPage(1); }}
+          {/* ✅ Status dropdown in sync with cards */}
+          <select
+            value={filterStatus}
+            onChange={e => { setFilterStatus(e.target.value); setPage(1); }}
             className="bg-white border border-black/[0.1] rounded-xl px-3 py-2.5 text-[13px] text-[#0A0A0A] outline-none cursor-pointer focus:border-[#FF4D00] transition-all appearance-none pr-8"
             style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg width='12' height='12' viewBox='0 0 12 12' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M2 4l4 4 4-4' stroke='%236B6B6B' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E")`, backgroundRepeat: "no-repeat", backgroundPosition: "right 10px center" }}>
             <option value="all">All Statuses</option>
@@ -625,8 +709,9 @@ export default function TicketsList() {
             ))}
           </select>
 
-          {(search || filterDecision !== "all" || filterStatus !== "all") && (
-            <button onClick={() => { setSearch(""); setFilterDecision("all"); setFilterStatus("all"); }}
+          {/* ✅ Clear filters — filterDecision removed */}
+          {(search || filterStatus !== "all") && (
+            <button onClick={() => { setSearch(""); setFilterStatus("all"); }}
               className="text-[12px] font-semibold text-[#6B6B6B] hover:text-[#FF4D00] bg-white border border-black/10 px-3 py-2.5 rounded-xl cursor-pointer transition-all">
               Clear filters
             </button>
@@ -657,7 +742,7 @@ export default function TicketsList() {
         {tickets.length > 0 && filtered.length === 0 && (
           <div className="flex flex-col items-center justify-center py-16 gap-3">
             <p className="text-[14px] font-semibold text-[#6B6B6B]">No tickets match your filters.</p>
-            <button onClick={() => { setSearch(""); setFilterDecision("all"); setFilterStatus("all"); }}
+            <button onClick={() => { setSearch(""); setFilterStatus("all"); }}
               className="text-[12px] font-semibold text-[#FF4D00] cursor-pointer bg-transparent border-none">
               Clear all filters
             </button>
@@ -688,8 +773,6 @@ export default function TicketsList() {
             </div>
 
             {filtered.map((ticket, i) => {
-              const decision    = normalizeDecision(ticket);
-              const dec         = DECISION_META[decision];
               const statusStyle = getStatusColor(ticket.status ?? "open");
               return (
                 <div key={ticket.id}
@@ -721,13 +804,13 @@ export default function TicketsList() {
                   <div className="flex items-center gap-1.5">
                     <div className="flex-1 h-1.5 rounded-full bg-black/[0.07] overflow-hidden">
                       <div className="h-full rounded-full" style={{
-                        width:      `${ticket.confidence ?? 0}%`,
-                        background: (ticket.confidence ?? 0) >= 80 ? "#15803d"
-                                  : (ticket.confidence ?? 0) >= 55 ? "#b45309" : "#FF4D00",
+                        width:      `${toPercent(ticket.confidence)}%`,
+                        background: toPercent(ticket.confidence) >= 80 ? "#15803d"
+                                  : toPercent(ticket.confidence) >= 55 ? "#b45309" : "#FF4D00",
                       }} />
                     </div>
                     <span className="text-[10px] font-bold text-[#6B6B6B] w-8 text-right">
-                      {ticket.confidence ?? 0}%
+                      {toPercent(ticket.confidence)}%
                     </span>
                   </div>
 
