@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from "react";
+import { submitTicket }                from "../services/api";
 
 // ── Types ──────────────────────────────────────────────────────────────────
 type Category = "access" | "hardware" | "software" | "network" | "security" | "other";
@@ -22,7 +23,6 @@ interface AIResult {
   processingTime: number;
 }
 
-// ── Ticket History Entry ───────────────────────────────────────────────────
 export interface TicketHistoryEntry {
   ticketId:       string;
   title:          string;
@@ -67,64 +67,6 @@ function saveTicketToHistory(form: TicketForm, result: AIResult) {
   localStorage.setItem(HISTORY_KEY, JSON.stringify([entry, ...existing]));
 }
 
-// ── Mock AI engine ─────────────────────────────────────────────────────────
-function simulateAI(form: TicketForm): Promise<AIResult> {
-  return new Promise((resolve) => {
-    const title = form.title.toLowerCase();
-    const desc  = form.description.toLowerCase();
-
-    let confidence = 60;
-    let intent     = "General IT Issue";
-    let fix        = "Our team will investigate and get back to you.";
-    let explanation= "The system detected an unclassified issue requiring manual review.";
-
-    if (title.includes("password") || desc.includes("password") || title.includes("reset")) {
-      confidence = 97; intent = "Password Reset";
-      fix        = "Account password has been reset. A temporary password has been sent to your registered email. Please change it upon first login.";
-      explanation= "High confidence match: keyword 'password reset' found in title. Historical success rate for this pattern is 99.2%. Policy allows auto-resolution.";
-    } else if (title.includes("vpn") || desc.includes("vpn") || title.includes("connect")) {
-      confidence = 92; intent = "VPN Connectivity Issue";
-      fix        = "VPN client has been reconfigured. Please disconnect, wait 10 seconds, and reconnect. If the issue persists, clear your VPN cache and retry.";
-      explanation= "Strong semantic match to 'VPN connectivity' pattern. 94% of similar tickets were resolved with a client reset. Confidence above 85% threshold.";
-    } else if (title.includes("access") || desc.includes("access") || title.includes("permission")) {
-      confidence = 38; intent = "Access Request";
-      fix        = "Access requests to production systems require manager approval. Your request has been forwarded to your department head and the security team.";
-      explanation= "Access request to sensitive system detected. Confidence is below the 80% threshold due to business-critical nature. Policy mandates human review for all access grants.";
-    } else if (title.includes("outlook") || title.includes("email") || desc.includes("email") || desc.includes("sync")) {
-      confidence = 61; intent = "Email Client Issue";
-      fix        = "Recommended fix: Open Outlook → File → Account Settings → Repair Account. If unresolved, try removing and re-adding your account.";
-      explanation= "Moderate confidence match to email sync issue. Some contextual details are ambiguous. A human agent will verify before applying the fix.";
-    } else if (title.includes("laptop") || title.includes("hardware") || title.includes("screen") || title.includes("keyboard")) {
-      confidence = form.image ? 58 : 44; intent = "Hardware Malfunction";
-      fix        = form.image
-        ? "Screenshot received and analyzed. Hardware issue logged with visual evidence. A technician will contact you within 1 business day."
-        : "A hardware replacement request has been raised with the IT assets team. You will be contacted within 2 business days.";
-      explanation= form.image
-        ? "Screenshot attachment increased confidence score. Visual evidence helps hardware team prioritize and diagnose remotely."
-        : "Hardware issues cannot be auto-resolved remotely. Escalated to hardware support queue for physical inspection.";
-    } else if (title.includes("slow") || title.includes("performance") || desc.includes("slow")) {
-      confidence = 71; intent = "Performance Degradation";
-      fix        = "Cleared browser cache and temp files remotely. Restarted background services on your workstation. Please test performance now.";
-      explanation= "Performance issues have a 71% auto-resolution rate. Running standard remediation steps. Agent will follow up if not resolved.";
-    }
-
-    if (form.image && confidence < 95) confidence = Math.min(confidence + 6, 99);
-
-    let decision: Decision;
-    if (confidence >= 80)      decision = "auto-resolved";
-    else if (confidence >= 55) decision = "human-review";
-    else                       decision = "escalated";
-
-    const processingTime = 1800 + Math.random() * 800;
-    setTimeout(() => resolve({
-      decision, confidence, intent,
-      suggestedFix: fix, explanation,
-      ticketId: `TKT-${Date.now().toString().slice(-5)}`,
-      processingTime: Math.round(processingTime),
-    }), processingTime);
-  });
-}
-
 // ── Constants ──────────────────────────────────────────────────────────────
 const CATEGORIES: { value: Category; label: string; icon: string }[] = [
   { value: "access",   label: "Access & Permissions", icon: "🔐" },
@@ -154,6 +96,7 @@ export default function Simulation() {
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [dragOver, setDragOver]         = useState(false);
   const [countdown, setCountdown]       = useState(AUTO_RESET_SECONDS);
+  const [submitError, setSubmitError]   = useState<string | null>(null);
   const fileInputRef                    = useRef<HTMLInputElement>(null);
   const countdownRef                    = useRef<ReturnType<typeof setInterval> | null>(null);
 
@@ -183,16 +126,42 @@ export default function Simulation() {
     return Object.keys(e).length === 0;
   };
 
+  // ── Real API Call ──────────────────────────────────────────────────────
   const handleSubmit = async () => {
     if (!validate()) return;
+    setSubmitError(null);
     try {
       setPhase("processing");
-      const aiResult = await simulateAI(form);
+
+      const data = await submitTicket({
+        title:        form.title,
+        description:  form.description,
+        category:     form.category,
+        submitted_by: form.user,
+        image:        form.image,
+      });
+
+      console.log("✅ Ticket created:", data);
+
+      // Map backend response → AIResult
+      const aiResult: AIResult = {
+        decision:       (data.decision as Decision)  ?? "human-review",
+        confidence:     data.confidence               ?? 70,
+        intent:         data.intent                   ?? "General IT Issue",
+        suggestedFix:   data.suggested_fix            ?? "Our team will investigate.",
+        explanation:    data.explanation              ?? "",
+        ticketId:       data.ticket_id ?? String(data.id) ?? `TKT-${Date.now().toString().slice(-5)}`,
+        processingTime: data.processing_time          ?? 2000,
+      };
+
       saveTicketToHistory(form, aiResult);
       setResult(aiResult);
       setPhase("thankyou");
-    } catch (err) {
-      console.error("[Simulation] AI engine error:", err);
+
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : "Something went wrong";
+      console.error("❌ Ticket submission failed:", message);
+      setSubmitError(message);
       setPhase("form");
     }
   };
@@ -200,7 +169,8 @@ export default function Simulation() {
   const handleReset = () => {
     if (countdownRef.current) clearInterval(countdownRef.current);
     setForm({ title: "", category: "", description: "", user: "", image: null });
-    setErrors({}); setResult(null); setImagePreview(null); setPhase("form");
+    setErrors({}); setResult(null); setImagePreview(null);
+    setSubmitError(null); setPhase("form");
   };
 
   const update = (field: keyof TicketForm, value: string) => {
@@ -261,24 +231,19 @@ export default function Simulation() {
         .select-base:focus { border-color:#FF4D00; box-shadow:0 0 0 3px rgba(255,77,0,0.08); }
       `}</style>
 
-      {/* ══════════════════════════════════════════
-          PHASE: FORM
-      ══════════════════════════════════════════ */}
+      {/* ══ PHASE: FORM ══ */}
       {phase === "form" && (
         <div className="fade-up flex flex-col lg:flex-row gap-5 items-start">
 
-          {/* ── LEFT: Theory panel ── */}
+          {/* LEFT: Theory panel */}
           <div className="lg:w-[260px] shrink-0 flex flex-col gap-4">
-
-            {/* Sim mode badge */}
             <div className="flex items-center gap-2.5 bg-[#FF4D00]/[0.07] border border-[#FF4D00]/20 rounded-xl px-4 py-3">
               <span className="pulse-dot w-1.5 h-1.5 rounded-full bg-[#FF4D00] shrink-0" />
               <span className="text-[12px] font-medium text-[#FF4D00] leading-snug">
-                Simulation mode — no real actions executed
+                Live mode — connected to real backend
               </span>
             </div>
 
-            {/* What happens */}
             <div className="bg-white rounded-2xl border border-black/10 p-5 flex flex-col gap-4">
               <p className="text-[13px] font-bold text-[#0A0A0A]">What happens when you submit?</p>
               {[
@@ -296,7 +261,6 @@ export default function Simulation() {
               ))}
             </div>
 
-            {/* Screenshot tip */}
             <div className="bg-white rounded-2xl border border-black/10 p-5 flex flex-col gap-3">
               <p className="text-[12px] font-bold text-[#0A0A0A]">💡 Pro tip — attach a screenshot</p>
               <p className="text-[12px] text-[#6B6B6B] leading-relaxed">
@@ -306,18 +270,15 @@ export default function Simulation() {
                 +6% confidence boost
               </span>
             </div>
-
-            
           </div>
 
-          {/* ── RIGHT: Form ── */}
+          {/* RIGHT: Form */}
           <div className="flex-1 bg-white/70 border border-black/[0.08] rounded-2xl p-6 flex flex-col gap-5">
 
-            {/* Header */}
             <div>
               <div className="inline-flex items-center gap-2 bg-[#FF4D00]/10 border border-[#FF4D00]/20 text-[#FF4D00] text-[11px] font-bold tracking-widest uppercase px-3 py-1.5 rounded-full mb-3">
                 <span className="pulse-dot w-1.5 h-1.5 rounded-full bg-[#FF4D00]" />
-                AI-Powered · Live Simulation
+                AI-Powered · Live
               </div>
               <h2 className="text-[20px] font-extrabold text-[#0A0A0A] tracking-tight leading-tight mb-1">
                 Submit a Support Ticket
@@ -327,18 +288,22 @@ export default function Simulation() {
               </p>
             </div>
 
+            {/* ── API Error Banner ── */}
+            {submitError && (
+              <div className="flex items-center gap-3 bg-red-50 border border-red-200 rounded-xl px-4 py-3">
+                <span className="text-red-500 text-[13px]">❌</span>
+                <p className="text-[12px] text-red-600 font-medium">{submitError}</p>
+              </div>
+            )}
+
             {/* Submitted By */}
             <div className="flex flex-col gap-1.5">
               <label className="text-[13px] font-semibold text-[#0A0A0A]">
                 Submitted By <span className="text-[#FF4D00]">*</span>
               </label>
-              <input
-                type="text"
-                placeholder="e.g. Sarah Johnson"
-                value={form.user}
-                onChange={e => update("user", e.target.value)}
-                className={`input-base ${errors.user ? "input-error" : ""}`}
-              />
+              <input type="text" placeholder="e.g. Sarah Johnson"
+                value={form.user} onChange={e => update("user", e.target.value)}
+                className={`input-base ${errors.user ? "input-error" : ""}`} />
               {errors.user && <p className="text-xs text-red-600">{errors.user}</p>}
             </div>
 
@@ -347,13 +312,9 @@ export default function Simulation() {
               <label className="text-[13px] font-semibold text-[#0A0A0A]">
                 Issue Title <span className="text-[#FF4D00]">*</span>
               </label>
-              <input
-                type="text"
-                placeholder="e.g. Cannot connect to VPN after system update"
-                value={form.title}
-                onChange={e => update("title", e.target.value)}
-                className={`input-base ${errors.title ? "input-error" : ""}`}
-              />
+              <input type="text" placeholder="e.g. Cannot connect to VPN after system update"
+                value={form.title} onChange={e => update("title", e.target.value)}
+                className={`input-base ${errors.title ? "input-error" : ""}`} />
               {errors.title && <p className="text-xs text-red-600">{errors.title}</p>}
             </div>
 
@@ -362,11 +323,8 @@ export default function Simulation() {
               <label className="text-[13px] font-semibold text-[#0A0A0A]">
                 Category <span className="text-[#FF4D00]">*</span>
               </label>
-              <select
-                value={form.category}
-                onChange={e => update("category", e.target.value)}
-                className={`select-base ${errors.category ? "input-error" : ""}`}
-              >
+              <select value={form.category} onChange={e => update("category", e.target.value)}
+                className={`select-base ${errors.category ? "input-error" : ""}`}>
                 <option value="">Select category…</option>
                 {CATEGORIES.map(c => (
                   <option key={c.value} value={c.value}>{c.icon} {c.label}</option>
@@ -383,13 +341,10 @@ export default function Simulation() {
                 </label>
                 <span className="text-[11px] text-[#ABABAB]">{form.description.length}/500</span>
               </div>
-              <textarea
-                placeholder="Describe the issue in detail. Include when it started, what you were doing, any error messages you saw…"
+              <textarea placeholder="Describe the issue in detail…"
                 value={form.description}
                 onChange={e => update("description", e.target.value.slice(0, 500))}
-                rows={5}
-                className={`input-base resize-none ${errors.description ? "input-error" : ""}`}
-              />
+                rows={5} className={`input-base resize-none ${errors.description ? "input-error" : ""}`} />
               {errors.description && <p className="text-xs text-red-600">{errors.description}</p>}
             </div>
 
@@ -397,7 +352,7 @@ export default function Simulation() {
             <div className="flex flex-col gap-1.5">
               <label className="text-[13px] font-semibold text-[#0A0A0A]">
                 Screenshot / Attachment
-                <span className="text-[#ABABAB] font-normal ml-1.5 text-[12px]">(optional — boosts AI confidence)</span>
+                <span className="text-[#ABABAB] font-normal ml-1.5 text-[12px]">(optional)</span>
               </label>
               {!imagePreview ? (
                 <div
@@ -406,10 +361,7 @@ export default function Simulation() {
                   onDrop={e => { e.preventDefault(); setDragOver(false); handleFile(e.dataTransfer.files?.[0] ?? null); }}
                   onClick={() => fileInputRef.current?.click()}
                   className="flex flex-col items-center justify-center gap-2 border-[1.5px] border-dashed rounded-xl py-8 cursor-pointer transition-all duration-200"
-                  style={{
-                    borderColor: dragOver ? "#FF4D00" : "rgba(10,10,10,0.15)",
-                    background:  dragOver ? "rgba(255,77,0,0.04)" : "white",
-                  }}
+                  style={{ borderColor: dragOver ? "#FF4D00" : "rgba(10,10,10,0.15)", background: dragOver ? "rgba(255,77,0,0.04)" : "white" }}
                 >
                   <svg width="28" height="28" viewBox="0 0 28 28" fill="none" className="text-[#ABABAB]">
                     <rect x="2" y="5" width="24" height="18" rx="3" stroke="currentColor" strokeWidth="1.5"/>
@@ -456,16 +408,14 @@ export default function Simulation() {
                 </svg>
               </button>
               <p className="text-[12px] text-[#ABABAB]">
-                {form.image ? "📎 Screenshot attached · " : ""}AI will respond in ~2 seconds
+                {form.image ? "📎 Screenshot attached · " : ""}Submitting to real backend
               </p>
             </div>
           </div>
         </div>
       )}
 
-      {/* ══════════════════════════════════════════
-          PHASE: PROCESSING
-      ══════════════════════════════════════════ */}
+      {/* ══ PHASE: PROCESSING ══ */}
       {phase === "processing" && (
         <div className="fade-in flex flex-col items-center justify-center min-h-[60vh] text-center gap-6">
           <div className="relative">
@@ -482,44 +432,37 @@ export default function Simulation() {
             </div>
           </div>
           <div>
-            <h2 className="text-xl font-extrabold text-[#0A0A0A] tracking-tight mb-1">Analyzing your ticket…</h2>
+            <h2 className="text-xl font-extrabold text-[#0A0A0A] tracking-tight mb-1">Submitting your ticket…</h2>
             <p className="text-sm text-[#6B6B6B]">
-              Our AI engine is classifying and scoring your request{form.image ? " + analyzing your screenshot" : ""}.
+              Sending to backend{form.image ? " with screenshot" : ""}. Please wait.
             </p>
           </div>
         </div>
       )}
 
-      {/* ══════════════════════════════════════════
-          PHASE: THANK YOU
-      ══════════════════════════════════════════ */}
+      {/* ══ PHASE: THANK YOU ══ */}
       {phase === "thankyou" && result && (() => {
         const meta = DECISION_META[result.decision];
         return (
           <div className="slide-up flex flex-col items-center justify-center min-h-[60vh]">
             <div className="w-full max-w-[520px] flex flex-col items-center gap-6">
 
-              {/* Check icon */}
               <div className="check-pop w-20 h-20 rounded-full bg-[#0A0A0A] flex items-center justify-center shadow-xl">
                 <svg width="36" height="36" viewBox="0 0 36 36" fill="none">
                   <path d="M8 18l7 7 13-13" stroke="#FF4D00" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"/>
                 </svg>
               </div>
 
-              {/* Heading */}
               <div className="text-center">
                 <h2 className="text-[26px] font-extrabold text-[#0A0A0A] tracking-tight leading-tight mb-2">
                   Ticket Submitted!
                 </h2>
                 <p className="text-[14px] text-[#6B6B6B] leading-relaxed max-w-[380px] mx-auto">
-                  Thank you, <strong className="text-[#0A0A0A]">{form.user}</strong>. Your ticket has been received and processed. Track the status in Ticket History.
+                  Thank you, <strong className="text-[#0A0A0A]">{form.user}</strong>. Your ticket has been saved to the database. Track it in Ticket History.
                 </p>
               </div>
 
-              {/* Ticket card */}
               <div className="w-full bg-white rounded-2xl border border-black/10 overflow-hidden">
-
-                {/* Status bar */}
                 <div className="px-5 py-3.5 flex items-center justify-between"
                   style={{ background: meta.bg, borderBottom: `1px solid ${meta.border}` }}>
                   <div className="flex items-center gap-2">
@@ -529,7 +472,6 @@ export default function Simulation() {
                   <span className="text-[12px] font-mono font-semibold text-[#6B6B6B]">{result.ticketId}</span>
                 </div>
 
-                {/* Details */}
                 <div className="p-5 flex flex-col gap-4">
                   <div>
                     <p className="text-[15px] font-bold text-[#0A0A0A] leading-snug">{form.title}</p>
@@ -563,7 +505,6 @@ export default function Simulation() {
                     </div>
                   </div>
 
-                  {/* What's next */}
                   <div className="flex items-start gap-3 bg-[#F5F5F5] rounded-xl px-4 py-3">
                     <svg width="15" height="15" viewBox="0 0 15 15" fill="none" className="shrink-0 mt-0.5 text-[#6B6B6B]">
                       <circle cx="7.5" cy="7.5" r="6" stroke="currentColor" strokeWidth="1.3"/>
@@ -571,16 +512,15 @@ export default function Simulation() {
                     </svg>
                     <p className="text-[12px] text-[#6B6B6B] leading-relaxed">
                       {result.decision === "auto-resolved"
-                        ? "This ticket was auto-resolved by the AI. Check your email for confirmation. No further action required."
+                        ? "This ticket was auto-resolved by the AI. Check your email for confirmation."
                         : result.decision === "human-review"
-                        ? "A support engineer will review the AI's suggested fix and respond within 1 business day."
+                        ? "A support engineer will review and respond within 1 business day."
                         : "This ticket has been escalated to the senior IT team. Expect a response within 2 hours."}
                     </p>
                   </div>
                 </div>
               </div>
 
-              {/* Countdown */}
               <div className="w-full flex flex-col gap-2">
                 <div className="flex items-center justify-between">
                   <p className="text-[12px] text-[#ABABAB]">Resetting form automatically…</p>
@@ -592,7 +532,6 @@ export default function Simulation() {
                 </div>
               </div>
 
-              {/* Action */}
               <button onClick={handleReset}
                 className="flex items-center gap-2 bg-[#0A0A0A] text-[#E9E9E9] text-[13px] font-bold px-5 py-2.5 rounded-xl border-none cursor-pointer hover:bg-[#1a1a1a] transition-all">
                 Submit Another Ticket

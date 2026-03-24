@@ -13,7 +13,7 @@ from fastapi import APIRouter, Depends, UploadFile, File, Form, Query
 from sqlalchemy.orm import Session
 from typing import List, Optional
 import logging
-
+from app.services.resolution_service import ResolutionService
 logger = logging.getLogger("resolvex")
 
 from app.database import get_db
@@ -25,27 +25,65 @@ router = APIRouter()
 
 @router.post("/tickets", response_model=TicketResponse, status_code=201)
 async def create_ticket(
-    title: str = Form(...),
-    description: str = Form(...),
-    submitted_by: Optional[str] = Form(None),
-    category: str = Form(...),
-    image: Optional[UploadFile] = File(None),
-    db: Session = Depends(get_db),
+    title:        str                  = Form(...),
+    description:  str                  = Form(...),
+    submitted_by: Optional[str]        = Form(None),
+    category:     str                  = Form(...),
+    image:        Optional[UploadFile] = File(None),
+    db:           Session              = Depends(get_db),
 ):
     """
-    Submit a new support ticket.
-    Accepts multipart form data.
-    `image` is optional — leave the field empty in Swagger to skip.
-    The image file is accepted but no processing is performed on it.
+    Submit a new support ticket AND auto-trigger AI resolution pipeline.
+    Returns merged ticket + AI result in one response.
     """
-    service = TicketService(db)
-    return await service.create_ticket(
+    # Step 1: Create ticket in DB
+    ticket_service = TicketService(db)
+    ticket = await ticket_service.create_ticket(
         title=title,
         description=description,
         submitted_by=submitted_by,
         category=category,
         image=image,
     )
+
+    # Step 2: Auto-trigger AI resolution
+    resolution_service = ResolutionService(db)
+    resolution = await resolution_service.resolve(ticket_id=ticket.id, force=False)
+
+    # Step 3: Map decision from resolution booleans
+    if resolution.auto_resolved:
+        decision = "auto-resolved"
+    elif resolution.escalated_to_human:
+        decision = "escalated"
+    else:
+        decision = "human-review"
+
+    # Step 4: Map confidence % to frontend format
+    confidence_percent = round(resolution.confidence * 100) if resolution.confidence <= 1 else round(resolution.confidence)
+
+    # Step 5: Build merged response
+    return TicketResponse(
+        # Core ticket fields
+        id=ticket.id,
+        title=ticket.title,
+        description=ticket.description,
+        category=resolution.category or ticket.category,
+        status=ticket.status,
+        submitted_by=ticket.submitted_by,
+        assigned_to=ticket.assigned_to,
+        created_at=ticket.created_at,
+        updated_at=ticket.updated_at,
+
+        # AI resolution fields — mapped from ResolutionResult
+        solution=resolution.solution,
+        suggested_fix=resolution.solution,
+        confidence=confidence_percent,
+        explanation=resolution.explanation,
+        decision=decision,
+        intent=resolution.category,        # category = intent in your schema
+        processing_time=None,              # not in ResolutionResult, add later if needed
+    )   
+
 
 
 @router.get("/tickets", response_model=TicketListResponse)

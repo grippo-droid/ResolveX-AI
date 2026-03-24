@@ -1,27 +1,29 @@
-import { useEffect, useCallback } from "react";
-import { useState } from "react";
+import { useEffect, useCallback, useState } from "react";
 import { Icons } from "./SidebarIcons";
 
+// ── Types ──────────────────────────────────────────────────────────────────
 export interface SidebarProps {
-  isOpen: boolean;
-  onToggle: () => void;
-  activeId: string;
+  isOpen:         boolean;
+  onToggle:       () => void;
+  activeId:       string;
   onActiveChange: (id: string) => void;
+  badgeCounts?:   Record<string, number>;  // ✅ live counts from DB
 }
 
 interface NavItem {
-  id: string;
-  label: string;
-  icon: React.ReactNode;
+  id:     string;
+  label:  string;
+  icon:   React.ReactNode;
   badge?: number;
 }
 
+// ── Nav Items — NO hardcoded badges ───────────────────────────────────────
 const NAV_MAIN: NavItem[] = [
-  { id: "overview",  label: "Overview",     icon: Icons.overview              },
-  { id: "tickets",   label: "Tickets",      icon: Icons.tickets,   badge: 12  },
-  { id: "decisions", label: "AI Decisions", icon: Icons.decisions, badge: 3   },
-  { id: "audit",     label: "Audit Logs",   icon: Icons.audit                 },
-  { id: "feedback",  label: "Feedback",     icon: Icons.feedback              },
+  { id: "overview",  label: "Overview",     icon: Icons.overview  },
+  { id: "tickets",   label: "Tickets",      icon: Icons.tickets   },
+  { id: "decisions", label: "AI Decisions", icon: Icons.decisions },
+  { id: "audit",     label: "Audit Logs",   icon: Icons.audit     },
+  { id: "feedback",  label: "Feedback",     icon: Icons.feedback  },
 ];
 
 const NAV_TRIAL: NavItem[] = [
@@ -29,6 +31,7 @@ const NAV_TRIAL: NavItem[] = [
   { id: "tickethistory", label: "Ticket History", icon: Icons.history    },
 ];
 
+// ── Tooltip ────────────────────────────────────────────────────────────────
 function Tooltip({ label }: { label: string }) {
   return (
     <div className="absolute left-full top-1/2 -translate-y-1/2 ml-3 z-50 pointer-events-none">
@@ -39,11 +42,12 @@ function Tooltip({ label }: { label: string }) {
   );
 }
 
+// ── NavRow ─────────────────────────────────────────────────────────────────
 function NavRow({ item, isOpen, isActive, onClick }: {
-  item: NavItem;
-  isOpen: boolean;
+  item:     NavItem;
+  isOpen:   boolean;
   isActive: boolean;
-  onClick: (id: string) => void;
+  onClick:  (id: string) => void;
 }) {
   const [hovered, setHovered] = useState(false);
 
@@ -71,26 +75,44 @@ function NavRow({ item, isOpen, isActive, onClick }: {
           </span>
         )}
 
-        {isOpen && item.badge !== undefined && (
-          <span className="bg-[#FF4D00] text-white font-bold px-2.5 py-0.5 rounded-full min-w-[24px] text-center shrink-0"
-            style={{ fontSize: 11 }}>
-            {item.badge}
+        {/* Badge — expanded sidebar */}
+        {isOpen && item.badge !== undefined && item.badge > 0 && (
+          <span
+            className="text-white font-bold px-2.5 py-0.5 rounded-full min-w-[24px] text-center shrink-0 transition-all duration-300"
+            style={{ fontSize: 11, background: "#FF4D00" }}
+          >
+            {item.badge > 99 ? "99+" : item.badge}
           </span>
         )}
 
-        {!isOpen && item.badge !== undefined && (
+        {/* Badge dot — collapsed sidebar */}
+        {!isOpen && item.badge !== undefined && item.badge > 0 && (
           <span className="absolute top-2 right-2 w-2 h-2 rounded-full bg-[#FF4D00] border-2 border-[#0D0D0D]" />
         )}
       </button>
 
+      {/* Tooltip on hover when collapsed */}
       {!isOpen && hovered && (
-        <Tooltip label={item.badge ? `${item.label}  ·  ${item.badge}` : item.label} />
+        <Tooltip
+          label={item.badge && item.badge > 0
+            ? `${item.label}  ·  ${item.badge > 99 ? "99+" : item.badge}`
+            : item.label}
+        />
       )}
     </li>
   );
 }
 
-export default function Sidebar({ isOpen, onToggle, activeId, onActiveChange }: SidebarProps) {
+// ── Main Sidebar ───────────────────────────────────────────────────────────
+export default function Sidebar({
+  isOpen,
+  onToggle,
+  activeId,
+  onActiveChange,
+  badgeCounts = {},
+}: SidebarProps) {
+
+  // Keyboard shortcut: [ to toggle sidebar
   const handleKey = useCallback((e: KeyboardEvent) => {
     if (e.key === "[" && !e.ctrlKey && !e.metaKey && !e.altKey) onToggle();
   }, [onToggle]);
@@ -100,11 +122,17 @@ export default function Sidebar({ isOpen, onToggle, activeId, onActiveChange }: 
     return () => window.removeEventListener("keydown", handleKey);
   }, [handleKey]);
 
+  // Inject live badge counts into nav items
+  const enrichedMain = NAV_MAIN.map(item => ({
+    ...item,
+    badge: badgeCounts[item.id] ?? undefined,
+  }));
+
   return (
     <>
       <style>{`
         @keyframes pulse-dot {
-          0%, 100% { opacity: 0.4; transform: scale(1); }
+          0%, 100% { opacity: 0.4; transform: scale(1);   }
           50%       { opacity: 1;   transform: scale(1.4); }
         }
         .live-dot { animation: pulse-dot 2.5s ease-in-out infinite; }
@@ -112,8 +140,8 @@ export default function Sidebar({ isOpen, onToggle, activeId, onActiveChange }: 
 
       <aside
         style={{
-          width:    isOpen ? "280px" : "76px",
-          minWidth: isOpen ? "280px" : "76px",
+          width:      isOpen ? "280px" : "76px",
+          minWidth:   isOpen ? "280px" : "76px",
           transition: "width 0.28s cubic-bezier(0.4,0,0.2,1), min-width 0.28s cubic-bezier(0.4,0,0.2,1)",
         }}
         className="relative flex flex-col h-screen bg-[#0D0D0D] border-r border-white/[0.07] shrink-0 z-40 overflow-hidden"
@@ -124,7 +152,7 @@ export default function Sidebar({ isOpen, onToggle, activeId, onActiveChange }: 
           style={{ background: "radial-gradient(ellipse 80% 50% at 50% 0%, rgba(255,77,0,0.09) 0%, transparent 100%)" }}
         />
 
-        {/* ── TOP BAR — logo only, no toggle ── */}
+        {/* ── Logo ── */}
         <div className={[
           "relative z-10 flex items-center shrink-0 border-b border-white/[0.07] py-5",
           isOpen ? "px-5 justify-start" : "px-0 justify-center",
@@ -140,10 +168,10 @@ export default function Sidebar({ isOpen, onToggle, activeId, onActiveChange }: 
           </div>
         </div>
 
-        {/* ── NAV ── */}
+        {/* ── Nav ── */}
         <nav className="relative z-10 flex-1 overflow-y-auto overflow-x-hidden py-6 px-3 flex flex-col gap-6">
 
-          {/* Main — label row WITH toggle button inline */}
+          {/* Main section */}
           <div className="flex flex-col gap-1.5">
             <div className={[
               "flex items-center mb-2",
@@ -154,25 +182,25 @@ export default function Sidebar({ isOpen, onToggle, activeId, onActiveChange }: 
                   Main
                 </p>
               )}
-              {/* ── Toggle button — now lives here ── */}
+              {/* Toggle button */}
               <button
                 onClick={onToggle}
                 aria-label={isOpen ? "Collapse sidebar" : "Expand sidebar"}
                 className="flex items-center justify-center w-7 h-7 rounded-lg border cursor-pointer transition-all duration-200 shrink-0"
                 style={{
-                  background:   "rgba(255,255,255,0.08)",
-                  borderColor:  "rgba(255,255,255,0.18)",
-                  color:        "#D4D4D4",
+                  background:  "rgba(255,255,255,0.08)",
+                  borderColor: "rgba(255,255,255,0.18)",
+                  color:       "#D4D4D4",
                 }}
                 onMouseEnter={e => {
-                  (e.currentTarget as HTMLButtonElement).style.background     = "rgba(255,77,0,0.15)";
-                  (e.currentTarget as HTMLButtonElement).style.borderColor    = "rgba(255,77,0,0.5)";
-                  (e.currentTarget as HTMLButtonElement).style.color          = "#FF4D00";
+                  (e.currentTarget as HTMLButtonElement).style.background  = "rgba(255,77,0,0.15)";
+                  (e.currentTarget as HTMLButtonElement).style.borderColor = "rgba(255,77,0,0.5)";
+                  (e.currentTarget as HTMLButtonElement).style.color       = "#FF4D00";
                 }}
                 onMouseLeave={e => {
-                  (e.currentTarget as HTMLButtonElement).style.background     = "rgba(255,255,255,0.08)";
-                  (e.currentTarget as HTMLButtonElement).style.borderColor    = "rgba(255,255,255,0.18)";
-                  (e.currentTarget as HTMLButtonElement).style.color          = "#D4D4D4";
+                  (e.currentTarget as HTMLButtonElement).style.background  = "rgba(255,255,255,0.08)";
+                  (e.currentTarget as HTMLButtonElement).style.borderColor = "rgba(255,255,255,0.18)";
+                  (e.currentTarget as HTMLButtonElement).style.color       = "#D4D4D4";
                 }}
               >
                 {isOpen ? Icons.chevronLeft : Icons.chevronRight}
@@ -182,15 +210,21 @@ export default function Sidebar({ isOpen, onToggle, activeId, onActiveChange }: 
             {!isOpen && <div className="h-1" />}
 
             <ul className="flex flex-col gap-1 p-0 m-0">
-              {NAV_MAIN.map(item => (
-                <NavRow key={item.id} item={item} isOpen={isOpen} isActive={activeId === item.id} onClick={onActiveChange} />
+              {enrichedMain.map(item => (        // ✅ use enrichedMain with live badges
+                <NavRow
+                  key={item.id}
+                  item={item}
+                  isOpen={isOpen}
+                  isActive={activeId === item.id}
+                  onClick={onActiveChange}
+                />
               ))}
             </ul>
           </div>
 
           <div className="border-t border-white/[0.06] mx-2" />
 
-          {/* Trial */}
+          {/* Trial section */}
           <div className="flex flex-col gap-1.5">
             {isOpen && (
               <p className="font-bold uppercase text-[#6b6b6b] px-4 mb-2" style={{ fontSize: 11, letterSpacing: "2.5px" }}>
@@ -199,14 +233,20 @@ export default function Sidebar({ isOpen, onToggle, activeId, onActiveChange }: 
             )}
             <ul className="flex flex-col gap-1 p-0 m-0">
               {NAV_TRIAL.map(item => (
-                <NavRow key={item.id} item={item} isOpen={isOpen} isActive={activeId === item.id} onClick={onActiveChange} />
+                <NavRow
+                  key={item.id}
+                  item={item}
+                  isOpen={isOpen}
+                  isActive={activeId === item.id}
+                  onClick={onActiveChange}
+                />
               ))}
             </ul>
           </div>
 
         </nav>
 
-        {/* ── BOTTOM ── */}
+        {/* ── Bottom status ── */}
         <div className={[
           "relative z-10 shrink-0 border-t border-white/[0.07] flex items-center gap-3 py-4",
           isOpen ? "px-5 justify-start" : "px-0 justify-center",

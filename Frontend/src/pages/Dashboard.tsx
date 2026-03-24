@@ -1,8 +1,10 @@
-import { useState, useEffect } from "react";
-import Sidebar from "../components/Sidebar";
-import Navbar from "../components/Navbar";
-import Simulation from "./Simulation";
-import TicketHistory from "./TicketHistory";
+import { useState, useEffect }        from "react";
+import Sidebar                         from "../components/Sidebar";
+import Navbar                          from "../components/Navbar";
+import Simulation                      from "./Simulation";
+import TicketHistory                   from "./TicketHistory";
+import TicketsList                     from "./TicketsList";
+import { getTickets }                  from "../services/api";
 
 const PAGE_LABELS: Record<string, string> = {
   overview:      "Overview",
@@ -25,6 +27,17 @@ export default function Dashboard() {
     const saved = localStorage.getItem(STORAGE_KEY);
     return saved && PAGE_LABELS[saved] ? saved : "overview";
   });
+
+  // ── Live badge counts ──────────────────────────────────────────────────
+  const [ticketCount,   setTicketCount]   = useState<number>(0);
+  const [decisionCount, setDecisionCount] = useState<number>(3); // static for now
+
+  useEffect(() => {
+    // Fetch real ticket count from DB
+    getTickets(1, 1)
+      .then(data => setTicketCount(data.total))
+      .catch(() => setTicketCount(0));
+  }, [activeId]); // re-fetch when page changes (e.g. after submitting)
 
   useEffect(() => {
     localStorage.setItem(STORAGE_KEY, activeId);
@@ -49,6 +62,7 @@ export default function Dashboard() {
         onToggle={handleToggle}
         activeId={activeId}
         onActiveChange={setActiveId}
+        badgeCounts={{ tickets: ticketCount, decisions: decisionCount }}  // ✅ pass live counts
       />
       <div className="flex flex-col flex-1 min-w-0 overflow-hidden bg-[#E9E9E9]">
         <Navbar
@@ -59,6 +73,7 @@ export default function Dashboard() {
         <main className="flex-1 overflow-y-auto px-7 py-7" role="main">
           {activeId === "simulation"    && <Simulation />}
           {activeId === "tickethistory" && <TicketHistory />}
+          {activeId === "tickets"       && <TicketsList />}
           {/* other sections coming soon */}
         </main>
       </div>
