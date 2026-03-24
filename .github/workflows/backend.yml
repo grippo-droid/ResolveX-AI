@@ -1,4 +1,5 @@
 name: Backend CI/CD
+
 on:
   push:
     branches: [main]
@@ -7,22 +8,66 @@ on:
 jobs:
   deploy:
     runs-on: ubuntu-latest
+
     steps:
-    - uses: actions/checkout@v4
-    
-    - name: Deploy to EC2
-      uses: appleboy/ssh-action@v1.0.3
-      with:
-        host: ${{ secrets.EC2_HOST }}
-        username: ${{ secrets.EC2_USER }}
-        key: ${{ secrets.EC2_SSH_KEY }}
-        port: 22
-        timeout: 60s
-        debug: true
-        script: |
-          cd ~/ResolveX-AI/Backend
-          git pull origin main
+    - name: Checkout Code
+      uses: actions/checkout@v4
+
+    # 🔍 STEP 1 — Write SSH Key
+    - name: Write SSH Key
+      run: |
+        echo "${{ secrets.EC2_SSH_KEY }}" > key.pem
+        chmod 600 key.pem
+
+        echo "---- KEY CHECK (first 3 lines) ----"
+        head -n 3 key.pem
+
+    # 🔍 STEP 2 — Test SSH manually (CRITICAL)
+    - name: Test SSH Connection
+      run: |
+        echo "Testing SSH connection..."
+        ssh -i key.pem -o StrictHostKeyChecking=no -vvv ${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }} "echo SUCCESS"
+
+    # 🔍 STEP 3 — Check remote environment
+    - name: Check Remote Server State
+      run: |
+        ssh -i key.pem -o StrictHostKeyChecking=no ${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }} << 'EOF'
+          echo "Connected to server"
+          whoami
+          pwd
+          ls -la ~/ResolveX-AI/Backend || echo "Backend folder missing"
+        EOF
+
+    # 🚀 STEP 4 — Deploy manually (NO appleboy)
+    - name: Deploy Backend
+      run: |
+        ssh -i key.pem -o StrictHostKeyChecking=no ${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }} << 'EOF'
+
+          set -e   # stop on error
+
+          cd ~/ResolveX-AI/Backend || exit 1
+
+          echo "Pulling latest code..."
+          git fetch origin main
+          git reset --hard origin/main
+
+          echo "Activating virtualenv..."
+          python3 -m venv venv || true
           source venv/bin/activate
-          pip install -r requirements.txt --quiet
+
+          echo "Installing dependencies..."
+          pip install -r requirements.txt
+
+          echo "Restarting backend service..."
           sudo systemctl restart resolvex-backend
+
+          echo "Checking service status..."
           sudo systemctl status resolvex-backend --no-pager
+
+          echo "Checking if service is alive..."
+          sleep 3
+          sudo systemctl is-active resolvex-backend || exit 1
+
+          echo "Deployment SUCCESS"
+
+        EOF
