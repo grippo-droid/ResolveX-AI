@@ -10,7 +10,7 @@ router = APIRouter()
 
 @router.get("/health")
 def health_check():
-    """Basic liveness probe — returns 200 if the app is running happy birthday pranao."""
+    """Basic liveness probe — returns 200 if the app is running."""
     return {
         "status": "ok",
         "app": settings.APP_NAME,
