@@ -26,7 +26,12 @@ jobs:
     - name: Test SSH Connection
       run: |
         echo "Testing SSH connection..."
-        ssh -i key.pem -o StrictHostKeyChecking=no -vvv ${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }} "echo SUCCESS"
+
+        ssh -i key.pem \
+        -o StrictHostKeyChecking=no \
+        -o LogLevel=DEBUG \
+        ${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }} \
+        "echo SUCCESS"
 
     # 🔍 STEP 3 — Check remote environment
     - name: Check Remote Server State
