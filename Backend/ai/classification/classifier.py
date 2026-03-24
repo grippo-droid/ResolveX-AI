@@ -22,112 +22,163 @@ else:
     groq_client = Groq(api_key=groq_api_key)
     logger.info("Groq client loaded from .env")
 
+
+# Fine-grained internal categories
 IT_CATEGORIES = [
-    "server_error", "database_error", "network_error", "vpn_error", "hardware_error",
-    "windows_error", "login_error", "email_error", "billing_error", "access_error",
-    "performance_error", "security_error", "mouse_error", "printer_error", "keyboard_error"
+    "server_error",
+    "database_error",
+    "network_error",
+    "vpn_error",
+    "hardware_error",
+    "windows_error",
+    "login_error",
+    "email_error",
+    "billing_error",
+    "access_error",
+    "performance_error",
+    "security_error",
+    "mouse_error",
+    "printer_error",
+    "keyboard_error",
 ]
 
+# Final fixed 6-category taxonomy
 CATEGORY_MAP = {
-    "server_error": "technical", "database_error": "technical", "network_error": "technical",
-    "vpn_error": "technical", "hardware_error": "technical", "windows_error": "technical",
-    "performance_error": "technical", "email_error": "technical", "mouse_error": "technical",
-    "printer_error": "technical", "keyboard_error": "technical",
-    "login_error": "account", "access_error": "account",
-    "billing_error": "billing", 
-    "security_error": "security"
+    # SOFTWARE
+    "server_error": "software",
+    "database_error": "software",
+    "windows_error": "software",
+    "performance_error": "software",
+    "email_error": "software",
+
+    # NETWORK
+    "network_error": "network",
+    "vpn_error": "network",
+
+    # HARDWARE
+    "hardware_error": "hardware",
+    "mouse_error": "hardware",
+    "printer_error": "hardware",
+    "keyboard_error": "hardware",
+
+    # ACCESS & PERMISSION
+    "login_error": "access_permission",
+    "access_error": "access_permission",
+
+    # SECURITY
+    "security_error": "security",
+
+    # OTHER
+    "billing_error": "other",
 }
+
 
 def llm_classify_fallback(text: str) -> Tuple[str, float]:
     if not groq_client:
-        return "technical", 0.75
-    
+        return "software", 0.75
+
     try:
         completion = groq_client.chat.completions.create(
             model="llama-3.3-70b-versatile",
             messages=[
                 {
-                    "role": "system", 
-                    "content": f"Classify IT ticket into one category from: {', '.join(IT_CATEGORIES)}. Respond ONLY with: CATEGORY,confidence where confidence is 0.0-1.0"
+                    "role": "system",
+                    "content": f"""
+Classify the IT support ticket into exactly ONE of these categories:
+{', '.join(IT_CATEGORIES)}
+
+Return ONLY in this exact format:
+category,confidence
+
+Where:
+- category must be one of the listed categories
+- confidence must be a float between 0.0 and 1.0
+
+Example:
+login_error,0.92
+""".strip()
                 },
                 {"role": "user", "content": text[:1000]}
             ],
             max_tokens=30,
             temperature=0.1
         )
-        
+
         response = completion.choices[0].message.content.strip()
+
         if "," in response:
             category, conf_str = response.split(",", 1)
+            category = category.strip()
             confidence = float(conf_str.strip())
-            final_category = CATEGORY_MAP.get(category.strip(), "technical")
-            logger.info(f"Groq LLM fallback: {category.strip()} -> {final_category} ({confidence:.2f})")
+
+            final_category = CATEGORY_MAP.get(category, "other")
+            logger.info(
+                f"Groq LLM fallback: {category} -> {final_category} ({confidence:.2f})"
+            )
             return final_category, confidence
-        return "technical", 0.80
-        
+
+        return "software", 0.80
+
     except Exception as e:
         logger.error(f"Groq fallback failed: {e}")
-        return "technical", 0.75
+        return "software", 0.75
+
 
 def classify_ticket(text: str) -> Tuple[str, float]:
     text = text.strip()
     if len(text) < 5:
-        return "technical", 0.5
-    
+        return "software", 0.50
+
     text_lower = text.lower()
-    
+
     patterns = {
+        # SOFTWARE
         r"\b(500|internal server|server error)\b": ("server_error", 0.98),
-        r"\b(mouse|trackpad|click|cursor|pointer)\b.*?(broken|not working|dead|stopped)": ("mouse_error", 0.97),
-        r"\b(keyboard|keys?|typing)\b.*?(not working|broken|dead|stuck)": ("keyboard_error", 0.96),
-        r"\b(printer|print)\b.*?(not working|jam|offline|error)": ("printer_error", 0.95),
-        r"\b(monitor|screen|display)\b.*?(blank|black|flicker|dead)": ("hardware_error", 0.95),
+        r"\b(database|postgres|mysql|sql|connection refused|db error|query failed)\b": ("database_error", 0.97),
         r"\b(blue screen|bsod|windows.*error|win\d+.*error)\b": ("windows_error", 0.97),
-        r"\b(vpn|network|wifi|connection.*timeout|ping.*fail)\b": ("network_error", 0.96),
-        r"\b(database|postgres|mysql|sql|connection refused)\b": ("database_error", 0.97),
-        r"\b(login|password|auth|authentication|access denied)\b": ("login_error", 0.95),
+        r"\b(slow|performance|lag|hang|hanging|freezing|freeze|memory leak|high cpu|high ram)\b": ("performance_error", 0.92),
+        r"\b(email|outlook|mailbox|smtp|imap|email delivery|mail not working)\b": ("email_error", 0.93),
+
+        # NETWORK
+        r"\b(vpn)\b": ("vpn_error", 0.97),
+        r"\b(network|wifi|wi-fi|internet|connection timeout|ping fail|latency|packet loss|dns)\b": ("network_error", 0.96),
+
+        # HARDWARE
+        r"\b(mouse|trackpad|click|cursor|pointer)\b.*?(broken|not working|dead|stopped|issue|problem)": ("mouse_error", 0.97),
+        r"\b(keyboard|keys?|typing)\b.*?(not working|broken|dead|stuck|issue|problem)": ("keyboard_error", 0.96),
+        r"\b(printer|print)\b.*?(not working|jam|offline|error|issue|problem)": ("printer_error", 0.95),
+        r"\b(monitor|screen|display|laptop|desktop|cpu|battery|charger|fan|motherboard|usb port)\b.*?(blank|black|flicker|dead|broken|damaged|not working|issue|problem)": ("hardware_error", 0.95),
+
+        # ACCESS & PERMISSION
+        r"\b(login|password|auth|authentication|access denied|permission denied|unauthorized|forbidden|reset password|password reset)\b": ("login_error", 0.95),
+        r"\b(role access|permission|privilege|grant access|revoke access|cannot access|no access)\b": ("access_error", 0.94),
+
+        # SECURITY
+        r"\b(security|malware|virus|phishing|hacked|breach|suspicious login|ransomware|threat)\b": ("security_error", 0.97),
+
+        # OTHER
         r"\b(billing|invoice|payment|refund|charge|subscription)\b": ("billing_error", 0.94),
-        r"\b(slow|performance|lag|hang|freezing|memory)\b": ("performance_error", 0.92),
     }
-    
+
     for pattern, (cat, conf) in patterns.items():
         if re.search(pattern, text_lower, re.IGNORECASE):
-            final_cat = CATEGORY_MAP.get(cat, "technical")
+            final_cat = CATEGORY_MAP.get(cat, "other")
             logger.info(f"Pattern match: {cat} -> {final_cat} ({conf:.3f})")
             return final_cat, conf
-    
+
     try:
         result = classifier(text[:512], IT_CATEGORIES)
-        raw_cat = result['labels'][0]
-        ml_conf = result['scores'][0]
-        
+        raw_cat = result["labels"][0]
+        ml_conf = result["scores"][0]
+
         if ml_conf > 0.35:
-            final_cat = CATEGORY_MAP.get(raw_cat, "technical")
+            final_cat = CATEGORY_MAP.get(raw_cat, "other")
             calibrated = min(0.95, ml_conf * 1.2 + 0.05)
             logger.info(f"Zero-shot: {raw_cat} -> {final_cat} ({calibrated:.3f})")
             return final_cat, float(calibrated)
-    
+
     except Exception as e:
         logger.warning(f"Zero-shot failed: {e}")
-    
+
     logger.info("Using Groq LLM fallback")
     return llm_classify_fallback(text)
-
-if __name__ == "__main__":
-    tests = [
-        "500 internal server error when accessing dashboard",
-        "My mouse is broken left click not working",
-        "Windows blue screen error after update", 
-        "Printer offline cannot print documents",
-        "VPN connection timeout error code 812",
-        "Random text that doesnt match anything",
-        "Billing invoice 12345 not received",
-        "Cannot login after password reset",
-        "Database connection refused port 5432"
-    ]
-    
-    print("Production Classifier Test Results:")
-    print("-" * 60)
-    for text in tests:
-        category, confidence = classify_ticket(text)
-        print(f"'{text[:40]}...' -> {category:12s} ({confidence:.3f})")
