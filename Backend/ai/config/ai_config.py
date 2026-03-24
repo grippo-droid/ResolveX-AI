@@ -8,9 +8,15 @@ EMBEDDING_MODEL_NAME = "all-MiniLM-L6-v2"
 EMBEDDING_DIMENSION = 384
 
 # ── FAISS ─────────────────────────────────────────────────────────────────────
-FAISS_INDEX_PATH = "storage/faiss_index.bin"
-FAISS_TOP_K = 5
 
+EMBEDDING_MODEL_NAME = "sentence-transformers/all-MiniLM-L6-v2"
+EMBEDDING_DIMENSION = 384
+
+FAISS_INDEX_PATH = "data/faiss/index.faiss"
+FAISS_DOCSTORE_PATH = "data/faiss/docstore.json"
+
+FAISS_TOP_K = 5
+FAISS_SCORE_THRESHOLD = 0.35
 # ── Groq LLM ─────────────────────────────────────────────────────────────────
 GROQ_MODEL = "llama-3.3-70b-versatile"
 GROQ_MAX_TOKENS = 1024

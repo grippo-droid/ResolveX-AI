@@ -1,5 +1,6 @@
 """
 seed_data.py — Seed script to populate the database with sample tickets and KB entries.
+               Also ingests KB entries into FAISS so RAG similarity scores are non-zero.
 Run: python scripts/seed_data.py
 """
 
@@ -13,6 +14,8 @@ from app.database import SessionLocal, init_db
 from app.models.ticket_model import Ticket
 from app.models.kb_model import KnowledgeBaseEntry
 from app.models.user_model import User
+from ai.rag.ingestion import ingest_documents
+from ai.rag.vector_store import get_vector_store
 
 
 SAMPLE_TICKETS = [
@@ -96,13 +99,33 @@ def seed():
             print(f"Seeded {len(SAMPLE_USERS)} users.")
 
         db.commit()
-        print("✅ Seed complete.")
+        print("✅ DB seed complete.")
     except Exception as exc:
         db.rollback()
         print(f"❌ Seed failed: {exc}")
         raise
     finally:
         db.close()
+
+    # ── FAISS ingestion ───────────────────────────────────────────────────────
+    # Only ingest if the FAISS index is currently empty (idempotent).
+    vector_store = get_vector_store()
+    if vector_store.total_vectors == 0:
+        print("FAISS index is empty — ingesting KB entries...")
+        docs = [
+            {
+                "doc_id":  i + 1,
+                "source":  "kb",
+                "title":   entry.title,
+                "category": entry.category,
+                "content": entry.content,
+            }
+            for i, entry in enumerate(SAMPLE_KB_ENTRIES)
+        ]
+        count = ingest_documents(docs)
+        print(f"✅ Ingested {count} KB entries into FAISS.")
+    else:
+        print(f"FAISS already has {vector_store.total_vectors} vectors — skipping ingestion.")
 
 
 if __name__ == "__main__":

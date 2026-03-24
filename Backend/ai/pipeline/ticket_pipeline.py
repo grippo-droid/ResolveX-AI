@@ -57,8 +57,11 @@ async def run_pipeline(ticket) -> dict:
     logger.debug("[Pipeline] Embedding generated")
 
     # ── Step 4: RAG Retrieval ─────────────────────────────────────────────────
-    context_docs = retrieve_context(embedding)
-    context_text = "\n\n---\n\n".join(context_docs)
+    context_docs = retrieve_context(embedding)   # List[Dict] with score, content, etc.
+    context_text = "\n\n---\n\n".join(
+        f"[{d.get('source','').upper()}] {d.get('title','')}\n{d.get('content','')}"  
+        for d in context_docs
+    )
     logger.info(f"[Pipeline] Retrieved {len(context_docs)} context documents")
 
     # ── Step 5: LLM Solution Generation ──────────────────────────────────────
@@ -95,10 +98,13 @@ async def run_pipeline(ticket) -> dict:
 
 def _compute_similarity_score(context_docs: list) -> float:
     """
-    Placeholder: derive a similarity score from retrieved context.
-    In production, use the FAISS distance scores returned by the retriever.
+    Derive similarity score from real FAISS inner-product scores.
+
+    Each doc in context_docs is a dict with a 'score' key (0–1 for normalised IP).
+    We take the max score (best match) so that one highly-relevant hit pushes
+    the score up, rather than averaging in lower-quality matches.
     """
     if not context_docs:
         return 0.0
-    # Simulate: more context docs → higher similarity (capped at 1.0)
-    return min(len(context_docs) / 5.0, 1.0)
+    scores = [d.get("score", 0.0) for d in context_docs if isinstance(d, dict)]
+    return float(max(scores)) if scores else 0.0
