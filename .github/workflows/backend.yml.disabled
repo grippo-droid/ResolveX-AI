@@ -1,5 +1,4 @@
 name: Deploy Backend
-
 on:
   push:
     branches: [main]
@@ -30,12 +29,15 @@ jobs:
             docker rm   resolvex || true
 
             docker build -t resolvex-backend .
+
             docker run -d \
               --name resolvex \
               -p 8000:8000 \
               --env-file .env \
+              -v /mnt/hf_storage/hf_cache:/home/appuser/.cache/huggingfacedocker rm $(docker ps -aq) \
               --restart always \
               resolvex-backend
 
             docker ps
+            curl http://localhost:8000/health
             echo "✅ Backend deployed successfully"
