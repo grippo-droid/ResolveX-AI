@@ -6,6 +6,7 @@ import {
   deleteTicket,
   type TicketAPIResponse,
 } from "../services/api";
+import { formatAIText } from "../utils/formatAIText";
 
 // ── Types ──────────────────────────────────────────────────────────────────
 type Decision  = "auto-resolved" | "human-review" | "escalated";
@@ -85,10 +86,10 @@ function TicketDetailDrawer({
   const offset      = circ - (conf / 100) * circ;
   const statusStyle = getStatusColor(ticket.status ?? "open");
 
-  const [assignee,     setAssignee]     = useState(ticket.assigned_to ?? "");
-  const [saving,       setSaving]       = useState(false);
-  const [saveSuccess,  setSaveSuccess]  = useState(false);
-  const [localStatus,  setLocalStatus]  = useState(ticket.status ?? "open");
+  const [assignee,    setAssignee]    = useState(ticket.assigned_to ?? "");
+  const [saving,      setSaving]      = useState(false);
+  const [saveSuccess, setSaveSuccess] = useState(false);
+  const [localStatus, setLocalStatus] = useState(ticket.status ?? "open");
 
   const handleStatusChange = async (newStatus: string) => {
     setLocalStatus(newStatus);
@@ -137,7 +138,6 @@ function TicketDetailDrawer({
               <span className="text-[11px] font-mono text-[#6B6B6B]">
                 TKT-{String(ticket.id).padStart(5, "0")}
               </span>
-              {/* Status badge */}
               <span className="text-[11px] font-bold px-2.5 py-0.5 rounded-full"
                 style={{ color: statusStyle.color, background: statusStyle.bg }}>
                 {localStatus}
@@ -194,8 +194,8 @@ function TicketDetailDrawer({
           {/* ── Meta Grid ── */}
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
             {[
-              { label: "Submitted By", value: ticket.submitted_by  ?? "—" },
-              { label: "Assigned To",  value: ticket.assigned_to   ?? "Unassigned" },
+              { label: "Submitted By", value: ticket.submitted_by ?? "—" },
+              { label: "Assigned To",  value: ticket.assigned_to  ?? "Unassigned" },
               { label: "Category",     value: `${CATEGORY_ICONS[ticket.category ?? ""] ?? "📋"} ${CATEGORY_LABELS[ticket.category ?? ""] ?? ticket.category ?? "—"}` },
               { label: "Submitted",    value: ticket.created_at ? timeAgo(ticket.created_at) : "—" },
             ].map(item => (
@@ -256,7 +256,7 @@ function TicketDetailDrawer({
             </div>
           </div>
 
-          {/* ── AI Suggested Fix ── */}
+          {/* ── AI Suggested Fix ✅ formatAIText ── */}
           {(ticket.suggested_fix ?? ticket.solution) && (
             <div className="flex flex-col gap-1.5">
               <div className="flex items-center gap-2">
@@ -269,14 +269,13 @@ function TicketDetailDrawer({
                 <p className="text-[11px] font-bold uppercase tracking-[1.2px] text-[#6B6B6B]">AI Suggested Fix</p>
               </div>
               <div className="bg-[#F5F5F5] rounded-xl p-4">
-                <p className="text-[13px] text-[#3a3a3a] leading-relaxed">
-                  {ticket.suggested_fix ?? ticket.solution}
-                </p>
+                {/* ✅ Formatted — replaces raw <p> tag */}
+                {formatAIText(ticket.suggested_fix ?? ticket.solution ?? "")}
               </div>
             </div>
           )}
 
-          {/* ── Explainability ── */}
+          {/* ── Explainability ✅ formatAIText ── */}
           {ticket.explanation && (
             <div className="flex flex-col gap-1.5">
               <div className="flex items-center gap-2">
@@ -292,7 +291,8 @@ function TicketDetailDrawer({
                 </span>
               </div>
               <div className="bg-[#F5F5F5] rounded-xl p-4">
-                <p className="text-[13px] text-[#3a3a3a] leading-relaxed">{ticket.explanation}</p>
+                {/* ✅ Formatted — replaces raw <p> tag */}
+                {formatAIText(ticket.explanation)}
               </div>
             </div>
           )}
@@ -319,7 +319,7 @@ function DeleteConfirmModal({
   onCancel,
   deleting,
 }: {
-  ticket:   TicketAPIResponse;
+  ticket:    TicketAPIResponse;
   onConfirm: () => void;
   onCancel:  () => void;
   deleting:  boolean;
@@ -333,7 +333,8 @@ function DeleteConfirmModal({
         <div className="flex items-center gap-3">
           <div className="w-10 h-10 rounded-xl bg-red-50 flex items-center justify-center shrink-0">
             <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
-              <path d="M3 5h12M8 5V3h2v2M7 8v5M11 8v5M4 5l1 10h8l1-10" stroke="#dc2626" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"/>
+              <path d="M3 5h12M8 5V3h2v2M7 8v5M11 8v5M4 5l1 10h8l1-10"
+                stroke="#dc2626" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"/>
             </svg>
           </div>
           <div>
@@ -362,22 +363,22 @@ function DeleteConfirmModal({
 
 // ── Main ───────────────────────────────────────────────────────────────────
 export default function TicketsList() {
-  const [tickets,       setTickets]       = useState<TicketAPIResponse[]>([]);
-  const [total,         setTotal]         = useState(0);
-  const [loading,       setLoading]       = useState(true);
-  const [error,         setError]         = useState<string | null>(null);
-  const [selected,      setSelected]      = useState<TicketAPIResponse | null>(null);
-  const [deleteTarget,  setDeleteTarget]  = useState<TicketAPIResponse | null>(null);
-  const [deleting,      setDeleting]      = useState(false);
-  const [toastMsg,      setToastMsg]      = useState<string | null>(null);
+  const [tickets,        setTickets]        = useState<TicketAPIResponse[]>([]);
+  const [total,          setTotal]          = useState(0);
+  const [loading,        setLoading]        = useState(true);
+  const [error,          setError]          = useState<string | null>(null);
+  const [selected,       setSelected]       = useState<TicketAPIResponse | null>(null);
+  const [deleteTarget,   setDeleteTarget]   = useState<TicketAPIResponse | null>(null);
+  const [deleting,       setDeleting]       = useState(false);
+  const [toastMsg,       setToastMsg]       = useState<string | null>(null);
 
   // Filters
-  const [search,        setSearch]        = useState("");
-  const [filterDecision,setFilterDecision]= useState<"all" | Decision>("all");
-  const [filterStatus,  setFilterStatus]  = useState<string>("all");
-  const [sortField,     setSortField]     = useState<SortField>("created_at");
-  const [sortOrder,     setSortOrder]     = useState<SortOrder>("desc");
-  const [page,          setPage]          = useState(1);
+  const [search,         setSearch]         = useState("");
+  const [filterDecision, setFilterDecision] = useState<"all" | Decision>("all");
+  const [filterStatus,   setFilterStatus]   = useState<string>("all");
+  const [sortField,      setSortField]      = useState<SortField>("created_at");
+  const [sortOrder,      setSortOrder]      = useState<SortOrder>("desc");
+  const [page,           setPage]           = useState(1);
   const PAGE_SIZE = 20;
 
   // ── Toast ──────────────────────────────────────────────────────────────
@@ -407,7 +408,7 @@ export default function TicketsList() {
 
   useEffect(() => { fetchTickets(); }, [fetchTickets]);
 
-  // ── Update ticket status ───────────────────────────────────────────────
+  // ── Update status ──────────────────────────────────────────────────────
   const handleStatusChange = async (id: number, status: string) => {
     await updateTicket(id, { status });
     setTickets(prev => prev.map(t => t.id === id ? { ...t, status } : t));
@@ -415,7 +416,7 @@ export default function TicketsList() {
     showToast(`✅ Status updated to "${status}"`);
   };
 
-  // ── Assign ticket ──────────────────────────────────────────────────────
+  // ── Assign ────────────────────────────────────────────────────────────
   const handleAssign = async (id: number, assigned_to: string) => {
     await updateTicket(id, { assigned_to });
     setTickets(prev => prev.map(t => t.id === id ? { ...t, assigned_to } : t));
@@ -423,7 +424,7 @@ export default function TicketsList() {
     showToast(`✅ Assigned to "${assigned_to}"`);
   };
 
-  // ── Delete ticket ──────────────────────────────────────────────────────
+  // ── Delete ────────────────────────────────────────────────────────────
   const handleDelete = async () => {
     if (!deleteTarget) return;
     setDeleting(true);
@@ -461,15 +462,14 @@ export default function TicketsList() {
         valA = new Date(a.created_at ?? 0).getTime();
         valB = new Date(b.created_at ?? 0).getTime();
       } else if (sortField === "confidence") {
-        valA = a.confidence ?? 0;
-        valB = b.confidence ?? 0;
+        valA = a.confidence ?? 0; valB = b.confidence ?? 0;
       } else if (sortField === "id") {
         valA = a.id; valB = b.id;
       } else if (sortField === "status") {
         valA = a.status ?? ""; valB = b.status ?? "";
       }
       if (valA < valB) return sortOrder === "asc" ? -1 : 1;
-      if (valA > valB) return sortOrder === "asc" ? 1  : -1;
+      if (valA > valB) return sortOrder === "asc" ?  1 : -1;
       return 0;
     });
 
@@ -486,8 +486,7 @@ export default function TicketsList() {
   };
 
   const SortIcon = ({ field }: { field: SortField }) => (
-    <svg width="10" height="10" viewBox="0 0 10 10" fill="none"
-      className="inline ml-1 opacity-50">
+    <svg width="10" height="10" viewBox="0 0 10 10" fill="none" className="inline ml-1 opacity-50">
       {sortField === field
         ? <path d={sortOrder === "desc" ? "M2 3l3 4 3-4" : "M2 7l3-4 3 4"}
             stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"/>
@@ -524,7 +523,7 @@ export default function TicketsList() {
         <p className="text-[13px] text-[#6B6B6B]">{error}</p>
       </div>
       <button onClick={fetchTickets}
-        className="flex items-center gap-2 text-[13px] font-semibold text-white bg-[#FF4D00] px-5 py-2.5 rounded-xl border-none cursor-pointer hover:bg-[#e64400] transition-all">
+        className="text-[13px] font-semibold text-white bg-[#FF4D00] px-5 py-2.5 rounded-xl border-none cursor-pointer hover:bg-[#e64400] transition-all">
         Retry
       </button>
     </div>
@@ -536,9 +535,10 @@ export default function TicketsList() {
         @keyframes fadeUp  { from{ opacity:0; transform:translateY(12px); } to{ opacity:1; transform:translateY(0); } }
         @keyframes fadeIn  { from{ opacity:0; } to{ opacity:1; } }
         @keyframes slideIn { from{ opacity:0; transform:translateY(-8px); } to{ opacity:1; transform:translateY(0); } }
-        .fade-up   { animation: fadeUp  0.4s ease both; }
-        .fade-in   { animation: fadeIn  0.3s ease both; }
-        .slide-in  { animation: slideIn 0.3s ease both; }
+        @keyframes spin    { to { transform: rotate(360deg); } }
+        .fade-up  { animation: fadeUp  0.4s ease both; }
+        .fade-in  { animation: fadeIn  0.3s ease both; }
+        .slide-in { animation: slideIn 0.3s ease both; }
         .row-hover:hover { background: rgba(255,77,0,0.025); }
       `}</style>
 
@@ -604,8 +604,6 @@ export default function TicketsList() {
 
         {/* ── Filters Row ── */}
         <div className="flex flex-wrap items-center gap-3">
-
-          {/* Search */}
           <div className="relative flex-1 min-w-[200px]">
             <svg width="15" height="15" viewBox="0 0 15 15" fill="none"
               className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[#ABABAB]">
@@ -618,7 +616,6 @@ export default function TicketsList() {
             />
           </div>
 
-          {/* Status filter */}
           <select value={filterStatus} onChange={e => { setFilterStatus(e.target.value); setPage(1); }}
             className="bg-white border border-black/[0.1] rounded-xl px-3 py-2.5 text-[13px] text-[#0A0A0A] outline-none cursor-pointer focus:border-[#FF4D00] transition-all appearance-none pr-8"
             style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg width='12' height='12' viewBox='0 0 12 12' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M2 4l4 4 4-4' stroke='%236B6B6B' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E")`, backgroundRepeat: "no-repeat", backgroundPosition: "right 10px center" }}>
@@ -628,7 +625,6 @@ export default function TicketsList() {
             ))}
           </select>
 
-          {/* Clear filters */}
           {(search || filterDecision !== "all" || filterStatus !== "all") && (
             <button onClick={() => { setSearch(""); setFilterDecision("all"); setFilterStatus("all"); }}
               className="text-[12px] font-semibold text-[#6B6B6B] hover:text-[#FF4D00] bg-white border border-black/10 px-3 py-2.5 rounded-xl cursor-pointer transition-all">
@@ -636,7 +632,6 @@ export default function TicketsList() {
             </button>
           )}
 
-          {/* Results count */}
           <span className="text-[12px] text-[#ABABAB] ml-auto">
             {filtered.length} result{filtered.length !== 1 ? "s" : ""}
           </span>
@@ -672,18 +667,16 @@ export default function TicketsList() {
         {/* ── Tickets Table ── */}
         {filtered.length > 0 && (
           <div className="bg-white rounded-2xl border border-black/[0.08] overflow-hidden">
-
-            {/* Table Header */}
             <div className="grid gap-4 px-5 py-3 border-b border-black/[0.06] bg-[#F9F9F9]"
               style={{ gridTemplateColumns: "1fr 130px 120px 100px 80px 80px 36px" }}>
               {[
-                { label: "Ticket",     field: null          },
-                { label: "Category",   field: null          },
-                { label: "Status",     field: "status"      },
-                { label: "Confidence", field: "confidence"  },
-                { label: "Assigned",   field: null          },
-                { label: "Time",       field: "created_at"  },
-                { label: "",           field: null          },
+                { label: "Ticket",     field: null         },
+                { label: "Category",   field: null         },
+                { label: "Status",     field: "status"     },
+                { label: "Confidence", field: "confidence" },
+                { label: "Assigned",   field: null         },
+                { label: "Time",       field: "created_at" },
+                { label: "",           field: null         },
               ].map(col => (
                 <button key={col.label}
                   onClick={() => col.field && toggleSort(col.field as SortField)}
@@ -694,7 +687,6 @@ export default function TicketsList() {
               ))}
             </div>
 
-            {/* Rows */}
             {filtered.map((ticket, i) => {
               const decision    = normalizeDecision(ticket);
               const dec         = DECISION_META[decision];
@@ -707,60 +699,45 @@ export default function TicketsList() {
                     borderBottom: i < filtered.length - 1 ? "1px solid rgba(10,10,10,0.05)" : "none",
                   }}>
 
-                  {/* Ticket title + meta */}
                   <div className="min-w-0 cursor-pointer" onClick={() => setSelected(ticket)}>
-                    <div className="flex items-center gap-2 mb-0.5">
-                      <span className="text-[10px] font-mono text-[#ABABAB]">
-                        TKT-{String(ticket.id).padStart(5, "0")}
-                      </span>
-                    </div>
+                    <span className="text-[10px] font-mono text-[#ABABAB]">
+                      TKT-{String(ticket.id).padStart(5, "0")}
+                    </span>
                     <p className="text-[13px] font-semibold text-[#0A0A0A] truncate hover:text-[#FF4D00] transition-colors">
                       {ticket.title}
                     </p>
-                    <p className="text-[11px] text-[#6B6B6B] mt-0.5 truncate">
-                      {ticket.submitted_by ?? "—"}
-                    </p>
+                    <p className="text-[11px] text-[#6B6B6B] mt-0.5 truncate">{ticket.submitted_by ?? "—"}</p>
                   </div>
 
-                  {/* Category */}
                   <span className="text-[12px] text-[#6B6B6B] truncate">
                     {CATEGORY_ICONS[ticket.category ?? ""] ?? "📋"} {CATEGORY_LABELS[ticket.category ?? ""] ?? ticket.category ?? "—"}
                   </span>
 
-                  {/* Status */}
                   <span className="text-[11px] font-bold px-2.5 py-1 rounded-full w-fit"
                     style={{ color: statusStyle.color, background: statusStyle.bg }}>
                     {(ticket.status ?? "open").charAt(0).toUpperCase() + (ticket.status ?? "open").slice(1)}
                   </span>
 
-                  {/* Confidence bar */}
                   <div className="flex items-center gap-1.5">
                     <div className="flex-1 h-1.5 rounded-full bg-black/[0.07] overflow-hidden">
-                      <div className="h-full rounded-full"
-                        style={{
-                          width:      `${ticket.confidence ?? 0}%`,
-                          background: (ticket.confidence ?? 0) >= 80 ? "#15803d"
-                                    : (ticket.confidence ?? 0) >= 55 ? "#b45309" : "#FF4D00",
-                        }} />
+                      <div className="h-full rounded-full" style={{
+                        width:      `${ticket.confidence ?? 0}%`,
+                        background: (ticket.confidence ?? 0) >= 80 ? "#15803d"
+                                  : (ticket.confidence ?? 0) >= 55 ? "#b45309" : "#FF4D00",
+                      }} />
                     </div>
                     <span className="text-[10px] font-bold text-[#6B6B6B] w-8 text-right">
                       {ticket.confidence ?? 0}%
                     </span>
                   </div>
 
-                  {/* Assigned */}
-                  <span className="text-[11px] text-[#6B6B6B] truncate">
-                    {ticket.assigned_to ?? "—"}
-                  </span>
+                  <span className="text-[11px] text-[#6B6B6B] truncate">{ticket.assigned_to ?? "—"}</span>
 
-                  {/* Time */}
                   <span className="text-[11px] text-[#ABABAB]">
                     {ticket.created_at ? timeAgo(ticket.created_at) : "—"}
                   </span>
 
-                  {/* Actions */}
                   <div className="flex items-center gap-1.5 justify-end">
-                    {/* View */}
                     <button onClick={() => setSelected(ticket)}
                       className="w-7 h-7 rounded-lg bg-black/[0.04] hover:bg-[#FF4D00]/10 flex items-center justify-center cursor-pointer border-none transition-all"
                       title="View details">
@@ -769,12 +746,12 @@ export default function TicketsList() {
                         <circle cx="6" cy="6" r="1.5" stroke="#6B6B6B" strokeWidth="1.2"/>
                       </svg>
                     </button>
-                    {/* Delete */}
                     <button onClick={() => setDeleteTarget(ticket)}
                       className="w-7 h-7 rounded-lg bg-black/[0.04] hover:bg-red-50 flex items-center justify-center cursor-pointer border-none transition-all"
                       title="Delete ticket">
                       <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
-                        <path d="M2 4h8M5 4V2.5h2V4M3.5 4l.5 6h4l.5-6" stroke="#ABABAB" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round"/>
+                        <path d="M2 4h8M5 4V2.5h2V4M3.5 4l.5 6h4l.5-6"
+                          stroke="#ABABAB" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round"/>
                       </svg>
                     </button>
                   </div>

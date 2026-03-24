@@ -1,5 +1,7 @@
+// Frontend/src/pages/TicketHistory.tsx
 import { useState, useEffect, useCallback } from "react";
 import { getTickets, type TicketAPIResponse } from "../services/api";
+import { formatAIText } from "../utils/formatAIText";
 
 // ── Types ──────────────────────────────────────────────────────────────────
 type Decision = "auto-resolved" | "human-review" | "escalated";
@@ -28,6 +30,7 @@ const CATEGORY_LABELS: Record<string, string> = {
   other:    "Other",
 };
 
+// ── Helpers ────────────────────────────────────────────────────────────────
 function timeAgo(iso: string): string {
   const diff = Math.floor((Date.now() - new Date(iso).getTime()) / 1000);
   if (diff < 60)    return `${diff}s ago`;
@@ -43,22 +46,27 @@ function formatDate(iso: string): string {
   });
 }
 
-// ── Helper: normalize decision from DB ────────────────────────────────────
 function normalizeDecision(ticket: TicketAPIResponse): Decision {
   if (ticket.decision === "auto-resolved") return "auto-resolved";
   if (ticket.decision === "escalated")     return "escalated";
   return "human-review";
 }
 
+function getStatusColor(status: string): { color: string; bg: string } {
+  switch (status) {
+    case "open":        return { color: "#2563eb", bg: "#eff6ff" };
+    case "in-progress": return { color: "#b45309", bg: "#fffbeb" };
+    case "resolved":    return { color: "#15803d", bg: "#f0fdf4" };
+    case "closed":      return { color: "#6B6B6B", bg: "#F5F5F5" };
+    default:            return { color: "#6B6B6B", bg: "#F5F5F5" };
+  }
+}
+
 // ── Detail Drawer ──────────────────────────────────────────────────────────
 function TicketDrawer({ ticket, onClose }: { ticket: TicketAPIResponse; onClose: () => void }) {
-  const decision  = normalizeDecision(ticket);
-  const dec       = DECISION_META[decision];
-  const conf      = ticket.confidence ?? 0;
-  const confColor = conf >= 80 ? "#15803d" : conf >= 55 ? "#b45309" : "#FF4D00";
-  const radius    = 40;
-  const circ      = 2 * Math.PI * radius;
-  const offset    = circ - (conf / 100) * circ;
+  const decision    = normalizeDecision(ticket);
+  const dec         = DECISION_META[decision];
+  const statusStyle = getStatusColor(ticket.status ?? "open");
 
   return (
     <div
@@ -67,27 +75,39 @@ function TicketDrawer({ ticket, onClose }: { ticket: TicketAPIResponse; onClose:
       onClick={onClose}
     >
       <div
-        className="w-full max-w-[580px] bg-white rounded-2xl shadow-2xl overflow-hidden"
+        className="w-full max-w-[950px] bg-white rounded-2xl shadow-2xl overflow-hidden"
+        style={{ maxHeight: "90vh" }}
         onClick={e => e.stopPropagation()}
       >
-        {/* Header */}
+        {/* ── Header ── */}
         <div
           className="px-6 py-4 flex items-start justify-between border-b border-black/[0.07]"
           style={{ background: dec.bg }}
         >
           <div>
-            <div className="flex items-center gap-2 mb-1">
+            <div className="flex items-center gap-2 mb-1.5 flex-wrap">
+              {/* Decision badge */}
               <span
                 className="text-[11px] font-bold px-2.5 py-0.5 rounded-full border"
                 style={{ color: dec.color, borderColor: dec.border, background: "white" }}
               >
                 {dec.label}
               </span>
+              {/* Ticket ID */}
               <span className="text-[11px] font-mono text-[#6B6B6B]">
                 TKT-{String(ticket.id).padStart(5, "0")}
               </span>
+              {/* Status pill */}
+              {ticket.status && (
+                <span
+                  className="text-[11px] font-bold px-2.5 py-0.5 rounded-full"
+                  style={{ color: statusStyle.color, background: statusStyle.bg }}
+                >
+                  {ticket.status.charAt(0).toUpperCase() + ticket.status.slice(1)}
+                </span>
+              )}
             </div>
-            <h3 className="text-[16px] font-extrabold text-[#0A0A0A] leading-snug max-w-[400px]">
+            <h3 className="text-[16px] font-extrabold text-[#0A0A0A] leading-snug max-w-[420px]">
               {ticket.title}
             </h3>
           </div>
@@ -101,47 +121,62 @@ function TicketDrawer({ ticket, onClose }: { ticket: TicketAPIResponse; onClose:
           </button>
         </div>
 
-        <div className="p-6 flex flex-col gap-5 max-h-[70vh] overflow-y-auto">
+        {/* ── Body ── */}
+        <div className="p-6 flex flex-col gap-5 overflow-y-auto" style={{ maxHeight: "calc(90vh - 84px)" }}>
 
-          {/* Confidence + decision */}
+          {/* ── AI Decision Banner — clean, no confidence score ── */}
           <div
-            className="flex items-center gap-5 p-4 rounded-xl border"
+            className="flex items-center gap-4 px-4 py-3.5 rounded-xl border"
             style={{ background: dec.bg, borderColor: dec.border }}
           >
-            <div className="relative w-24 h-24 shrink-0 flex items-center justify-center">
-              <svg width="96" height="96" viewBox="0 0 96 96" style={{ transform: "rotate(-90deg)" }}>
-                <circle cx="48" cy="48" r={radius} fill="none" stroke="rgba(10,10,10,0.08)" strokeWidth="8"/>
-                <circle cx="48" cy="48" r={radius} fill="none" stroke={confColor} strokeWidth="8"
-                  strokeLinecap="round" strokeDasharray={circ} strokeDashoffset={offset}
-                  style={{ transition: "stroke-dashoffset 1s ease" }}/>
-              </svg>
-              <div className="absolute inset-0 flex flex-col items-center justify-center">
-                <span className="text-xl font-extrabold" style={{ color: confColor }}>{conf}%</span>
-                <span className="text-[9px] font-medium text-[#6B6B6B]">confidence</span>
-              </div>
+            {/* Decision icon */}
+            <div
+              className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0"
+              style={{ background: dec.color + "18", border: `1.5px solid ${dec.border}` }}
+            >
+              {decision === "auto-resolved" && (
+                <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+                  <circle cx="8" cy="8" r="6.5" stroke={dec.color} strokeWidth="1.4"/>
+                  <path d="M5 8l2 2 4-4" stroke={dec.color} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                </svg>
+              )}
+              {decision === "human-review" && (
+                <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+                  <circle cx="8" cy="6" r="2.5" stroke={dec.color} strokeWidth="1.4"/>
+                  <path d="M3.5 13c0-2.5 2-4 4.5-4s4.5 1.5 4.5 4" stroke={dec.color} strokeWidth="1.4" strokeLinecap="round"/>
+                </svg>
+              )}
+              {decision === "escalated" && (
+                <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+                  <path d="M8 2v7M8 11v1.5" stroke={dec.color} strokeWidth="1.5" strokeLinecap="round"/>
+                  <path d="M3 13.5h10" stroke={dec.color} strokeWidth="1.4" strokeLinecap="round"/>
+                </svg>
+              )}
             </div>
-            <div>
-              <p className="text-[10px] font-bold uppercase tracking-[1.2px] mb-1" style={{ color: dec.color }}>
+            <div className="flex-1 min-w-0">
+              <p className="text-[10px] font-bold uppercase tracking-[1.2px] mb-0.5" style={{ color: dec.color }}>
                 AI Decision
               </p>
-              <p className="text-[15px] font-extrabold text-[#0A0A0A] mb-1">{dec.label}</p>
-              <p className="text-[11px] font-semibold text-[#6B6B6B]">
-                Intent: <span className="text-[#0A0A0A]">{ticket.intent ?? ticket.category ?? "—"}</span>
-              </p>
-              {ticket.processing_time && (
+              <p className="text-[14px] font-extrabold text-[#0A0A0A]">{dec.label}</p>
+              {ticket.intent && (
                 <p className="text-[11px] text-[#6B6B6B] mt-0.5">
-                  Processed in {ticket.processing_time}ms
+                  Intent: <span className="font-semibold text-[#0A0A0A]">{ticket.intent}</span>
                 </p>
               )}
             </div>
+            {ticket.processing_time && (
+              <span className="text-[10px] font-medium text-[#ABABAB] shrink-0">
+                {ticket.processing_time}ms
+              </span>
+            )}
           </div>
 
-          {/* Meta grid */}
+          {/* ── Meta Grid ── */}
           <div className="grid grid-cols-3 gap-3">
             {[
-              { label: "Submitted by", value: ticket.submitted_by || "—" },
+              { label: "Submitted By", value: ticket.submitted_by || "—" },
               { label: "Category",     value: `${CATEGORY_ICONS[ticket.category ?? ""] ?? "📋"} ${CATEGORY_LABELS[ticket.category ?? ""] ?? ticket.category ?? "—"}` },
-              { label: "Status",       value: ticket.status ?? "—" },
+              { label: "Submitted",    value: ticket.created_at ? timeAgo(ticket.created_at) : "—" },
             ].map(item => (
               <div key={item.label} className="bg-[#F5F5F5] rounded-xl p-3">
                 <p className="text-[10px] font-bold uppercase tracking-[1px] text-[#ABABAB] mb-0.5">{item.label}</p>
@@ -150,7 +185,7 @@ function TicketDrawer({ ticket, onClose }: { ticket: TicketAPIResponse; onClose:
             ))}
           </div>
 
-          {/* Description */}
+          {/* ── Description ── */}
           <div className="flex flex-col gap-1.5">
             <p className="text-[11px] font-bold uppercase tracking-[1.2px] text-[#6B6B6B]">Description</p>
             <div className="bg-[#F5F5F5] rounded-xl p-4">
@@ -158,7 +193,7 @@ function TicketDrawer({ ticket, onClose }: { ticket: TicketAPIResponse; onClose:
             </div>
           </div>
 
-          {/* Suggested resolution */}
+          {/* ── AI Suggested Resolution ✅ formatAIText ── */}
           {(ticket.suggested_fix || ticket.solution) && (
             <div className="flex flex-col gap-1.5">
               <div className="flex items-center gap-2">
@@ -170,43 +205,26 @@ function TicketDrawer({ ticket, onClose }: { ticket: TicketAPIResponse; onClose:
                     />
                   </svg>
                 </div>
-                <p className="text-[11px] font-bold uppercase tracking-[1.2px] text-[#6B6B6B]">Suggested Resolution</p>
-              </div>
-              <div className="bg-[#F5F5F5] rounded-xl p-4">
-                <p className="text-[13px] text-[#3a3a3a] leading-relaxed">
-                  {ticket.suggested_fix ?? ticket.solution}
+                <p className="text-[11px] font-bold uppercase tracking-[1.2px] text-[#6B6B6B]">
+                  Suggested Resolution
                 </p>
               </div>
-            </div>
-          )}
-
-          {/* Explainability */}
-          {ticket.explanation && (
-            <div className="flex flex-col gap-1.5">
-              <div className="flex items-center gap-2">
-                <div className="w-6 h-6 bg-[#FF4D00]/10 border border-[#FF4D00]/20 rounded-lg flex items-center justify-center shrink-0">
-                  <svg width="11" height="11" viewBox="0 0 13 13" fill="none">
-                    <circle cx="6.5" cy="6.5" r="5.5" stroke="#FF4D00" strokeWidth="1.3"/>
-                    <path d="M6.5 4.5V7M6.5 9v.5" stroke="#FF4D00" strokeWidth="1.3" strokeLinecap="round"/>
-                  </svg>
-                </div>
-                <p className="text-[11px] font-bold uppercase tracking-[1.2px] text-[#6B6B6B]">Why this decision?</p>
-                <span className="ml-auto text-[10px] font-semibold text-[#FF4D00] bg-[#FF4D00]/10 px-2 py-0.5 rounded-full">
-                  Explainable AI
-                </span>
-              </div>
               <div className="bg-[#F5F5F5] rounded-xl p-4">
-                <p className="text-[13px] text-[#3a3a3a] leading-relaxed">{ticket.explanation}</p>
+                {/* ✅ Formatted AI text */}
+                {formatAIText(ticket.suggested_fix ?? ticket.solution ?? "")}
               </div>
             </div>
           )}
 
-          {/* Submitted at */}
+          {/* ── Footer timestamp ── */}
           {ticket.created_at && (
             <p className="text-[11px] text-[#ABABAB] text-center">
               Submitted {formatDate(ticket.created_at)}
+              {ticket.updated_at && ticket.updated_at !== ticket.created_at &&
+                ` · Updated ${formatDate(ticket.updated_at)}`}
             </p>
           )}
+
         </div>
       </div>
     </div>
@@ -215,17 +233,17 @@ function TicketDrawer({ ticket, onClose }: { ticket: TicketAPIResponse; onClose:
 
 // ── Main ───────────────────────────────────────────────────────────────────
 export default function TicketHistory() {
-  const [tickets, setTickets]   = useState<TicketAPIResponse[]>([]);
+  const [tickets,  setTickets]  = useState<TicketAPIResponse[]>([]);
   const [selected, setSelected] = useState<TicketAPIResponse | null>(null);
-  const [loading, setLoading]   = useState(true);
-  const [error, setError]       = useState<string | null>(null);
-  const [filter, setFilter]     = useState<"all" | Decision>("all");
-  const [search, setSearch]     = useState("");
-  const [page, setPage]         = useState(1);
-  const [total, setTotal]       = useState(0);
+  const [loading,  setLoading]  = useState(true);
+  const [error,    setError]    = useState<string | null>(null);
+  const [filter,   setFilter]   = useState<"all" | Decision>("all");
+  const [search,   setSearch]   = useState("");
+  const [page,     setPage]     = useState(1);
+  const [total,    setTotal]    = useState(0);
   const PAGE_SIZE = 20;
 
-  // ── Fetch from DB ──────────────────────────────────────────────────────
+  // ── Fetch ──────────────────────────────────────────────────────────────
   const fetchTickets = useCallback(async () => {
     try {
       setLoading(true);
@@ -244,9 +262,9 @@ export default function TicketHistory() {
 
   // ── Client-side filter + search ────────────────────────────────────────
   const filtered = tickets.filter(t => {
-    const decision      = normalizeDecision(t);
-    const matchFilter   = filter === "all" || decision === filter;
-    const matchSearch   =
+    const decision    = normalizeDecision(t);
+    const matchFilter = filter === "all" || decision === filter;
+    const matchSearch =
       !search.trim() ||
       t.title.toLowerCase().includes(search.toLowerCase()) ||
       (t.submitted_by ?? "").toLowerCase().includes(search.toLowerCase()) ||
@@ -263,17 +281,32 @@ export default function TicketHistory() {
 
   // ── Loading ────────────────────────────────────────────────────────────
   if (loading) return (
-    <div className="flex items-center justify-center min-h-[40vh]">
-      <p className="text-[#6B6B6B] text-sm animate-pulse">Loading tickets from database…</p>
+    <div className="flex flex-col items-center justify-center min-h-[60vh] gap-4">
+      <div className="relative w-12 h-12">
+        <div className="absolute inset-0 rounded-full border-[3px] border-black/[0.06]" />
+        <div className="absolute inset-0 rounded-full border-[3px] border-transparent"
+          style={{ borderTopColor: "#FF4D00", animation: "spin 0.8s linear infinite" }} />
+      </div>
+      <p className="text-[13px] text-[#6B6B6B]">Loading ticket history…</p>
+      <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
     </div>
   );
 
   // ── Error ──────────────────────────────────────────────────────────────
   if (error) return (
-    <div className="flex flex-col items-center justify-center min-h-[40vh] gap-3">
-      <p className="text-red-500 text-sm">❌ {error}</p>
+    <div className="flex flex-col items-center justify-center min-h-[60vh] gap-4">
+      <div className="w-14 h-14 rounded-2xl bg-red-50 flex items-center justify-center">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+          <circle cx="12" cy="12" r="10" stroke="#dc2626" strokeWidth="1.5"/>
+          <path d="M12 7v5M12 15v1" stroke="#dc2626" strokeWidth="1.5" strokeLinecap="round"/>
+        </svg>
+      </div>
+      <div className="text-center">
+        <p className="text-[15px] font-bold text-[#0A0A0A] mb-1">Failed to load history</p>
+        <p className="text-[13px] text-[#6B6B6B]">{error}</p>
+      </div>
       <button onClick={fetchTickets}
-        className="text-[12px] font-semibold text-[#FF4D00] border border-[#FF4D00]/30 px-4 py-2 rounded-xl cursor-pointer bg-transparent hover:bg-[#FF4D00]/5 transition-all">
+        className="text-[13px] font-semibold text-white bg-[#FF4D00] px-5 py-2.5 rounded-xl border-none cursor-pointer hover:bg-[#e64400] transition-all">
         Retry
       </button>
     </div>
@@ -282,9 +315,10 @@ export default function TicketHistory() {
   return (
     <>
       <style>{`
-        @keyframes fadeUp { from{ opacity:0; transform:translateY(12px); } to{ opacity:1; transform:translateY(0); } }
+        @keyframes fadeUp  { from{ opacity:0; transform:translateY(12px); } to{ opacity:1; transform:translateY(0); } }
+        @keyframes spin    { to{ transform: rotate(360deg); } }
         .fade-up   { animation: fadeUp 0.4s ease both; }
-        .row-hover:hover { background: rgba(255,77,0,0.03); }
+        .row-hover:hover { background: rgba(255,77,0,0.025); }
       `}</style>
 
       <div className="flex flex-col gap-5 fade-up">
@@ -292,23 +326,23 @@ export default function TicketHistory() {
         {/* ── Header ── */}
         <div className="flex items-start justify-between flex-wrap gap-3">
           <div>
-            <h2 className="text-[22px] font-extrabold text-[#0A0A0A] tracking-tight">Ticket History</h2>
-            <p className="text-[13px] text-[#6B6B6B] mt-0.5">
+            {/*  */}
+            <p className="text-[13px] text-[#6B6B6B]">
               All tickets from database — {total} total
             </p>
           </div>
-          {/* Refresh button */}
           <button onClick={fetchTickets}
             className="flex items-center gap-1.5 text-[12px] font-semibold text-[#6B6B6B] hover:text-[#0A0A0A] border border-black/10 px-3.5 py-2 rounded-xl bg-white transition-all cursor-pointer">
             <svg width="13" height="13" viewBox="0 0 13 13" fill="none">
-              <path d="M11 6.5A4.5 4.5 0 1 1 6.5 2a4.5 4.5 0 0 1 3.18 1.32L11 5" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"/>
+              <path d="M11 6.5A4.5 4.5 0 1 1 6.5 2a4.5 4.5 0 0 1 3.18 1.32L11 5"
+                stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"/>
               <path d="M11 2v3H8" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"/>
             </svg>
             Refresh
           </button>
         </div>
 
-        {/* ── Stats row ── */}
+        {/* ── Stats Cards ── */}
         {tickets.length > 0 && (
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
             {[
@@ -321,11 +355,11 @@ export default function TicketHistory() {
                 onClick={() => setFilter(s.key as typeof filter)}
                 className="flex flex-col gap-1 p-4 rounded-2xl border text-left cursor-pointer transition-all duration-150"
                 style={{
-                  background:  filter === s.key ? s.bg : "white",
+                  background:  filter === s.key ? s.bg    : "white",
                   borderColor: filter === s.key ? s.color + "44" : "rgba(10,10,10,0.08)",
                   boxShadow:   filter === s.key ? `0 0 0 1.5px ${s.color}33` : "none",
                 }}>
-                <span className="text-[26px] font-extrabold" style={{ color: s.color }}>
+                <span className="text-[26px] font-extrabold leading-none" style={{ color: s.color }}>
                   {counts[s.key as keyof typeof counts]}
                 </span>
                 <span className="text-[12px] font-semibold text-[#6B6B6B]">{s.label}</span>
@@ -334,7 +368,7 @@ export default function TicketHistory() {
           </div>
         )}
 
-        {/* ── Search bar ── */}
+        {/* ── Search ── */}
         {tickets.length > 0 && (
           <div className="flex items-center gap-3">
             <div className="relative flex-1">
@@ -348,16 +382,16 @@ export default function TicketHistory() {
                 className="w-full bg-white border border-black/[0.1] rounded-xl pl-10 pr-4 py-2.5 text-[13px] text-[#0A0A0A] outline-none focus:border-[#FF4D00] transition-all placeholder:text-[#ABABAB]"
               />
             </div>
-            {search && (
-              <button onClick={() => setSearch("")}
-                className="text-[12px] font-semibold text-[#6B6B6B] hover:text-[#0A0A0A] bg-white border border-black/10 px-3 py-2.5 rounded-xl cursor-pointer transition-all">
+            {(search || filter !== "all") && (
+              <button onClick={() => { setSearch(""); setFilter("all"); }}
+                className="text-[12px] font-semibold text-[#6B6B6B] hover:text-[#FF4D00] bg-white border border-black/10 px-3 py-2.5 rounded-xl cursor-pointer transition-all">
                 Clear
               </button>
             )}
           </div>
         )}
 
-        {/* ── Empty state ── */}
+        {/* ── Empty State ── */}
         {tickets.length === 0 && (
           <div className="flex flex-col items-center justify-center py-20 gap-4">
             <div className="w-16 h-16 rounded-2xl bg-white border border-black/10 flex items-center justify-center">
@@ -375,7 +409,7 @@ export default function TicketHistory() {
           </div>
         )}
 
-        {/* ── No results ── */}
+        {/* ── No Results ── */}
         {tickets.length > 0 && filtered.length === 0 && (
           <div className="flex flex-col items-center justify-center py-16 gap-3">
             <p className="text-[14px] font-semibold text-[#6B6B6B]">No tickets match your search.</p>
@@ -386,13 +420,13 @@ export default function TicketHistory() {
           </div>
         )}
 
-        {/* ── Ticket list ── */}
+        {/* ── Ticket List ── */}
         {filtered.length > 0 && (
           <div className="bg-white rounded-2xl border border-black/[0.08] overflow-hidden">
 
             {/* Table header */}
-            <div className="grid grid-cols-[1fr_140px_120px_80px_36px] gap-4 px-5 py-3 border-b border-black/[0.06] bg-[#F9F9F9]">
-              {["Ticket", "Category", "Status", "Time", ""].map(h => (
+            <div className="grid grid-cols-[1fr_140px_130px_80px_28px] gap-4 px-5 py-3 border-b border-black/[0.06] bg-[#F9F9F9]">
+              {["Ticket", "Category", "Decision", "Time", ""].map(h => (
                 <span key={h} className="text-[10px] font-bold uppercase tracking-[1.2px] text-[#ABABAB]">{h}</span>
               ))}
             </div>
@@ -404,18 +438,20 @@ export default function TicketHistory() {
               return (
                 <div key={ticket.id}
                   onClick={() => setSelected(ticket)}
-                  className="row-hover grid grid-cols-[1fr_140px_120px_80px_36px] gap-4 px-5 py-4 items-center cursor-pointer transition-all duration-150"
+                  className="row-hover grid grid-cols-[1fr_140px_130px_80px_28px] gap-4 px-5 py-4 items-center cursor-pointer transition-all duration-150"
                   style={{ borderBottom: i < filtered.length - 1 ? "1px solid rgba(10,10,10,0.05)" : "none" }}>
 
-                  {/* Title + meta */}
+                  {/* Title */}
                   <div className="min-w-0">
-                    <div className="flex items-center gap-2 mb-0.5">
-                      <span className="text-[11px] font-mono text-[#ABABAB]">
-                        TKT-{String(ticket.id).padStart(5, "0")}
-                      </span>
-                    </div>
-                    <p className="text-[13px] font-semibold text-[#0A0A0A] truncate">{ticket.title}</p>
-                    <p className="text-[11px] text-[#6B6B6B] mt-0.5">{ticket.submitted_by || "—"}</p>
+                    <span className="text-[10px] font-mono text-[#ABABAB]">
+                      TKT-{String(ticket.id).padStart(5, "0")}
+                    </span>
+                    <p className="text-[13px] font-semibold text-[#0A0A0A] truncate mt-0.5 hover:text-[#FF4D00] transition-colors">
+                      {ticket.title}
+                    </p>
+                    <p className="text-[11px] text-[#6B6B6B] mt-0.5 truncate">
+                      {ticket.submitted_by || "—"}
+                    </p>
                   </div>
 
                   {/* Category */}
@@ -442,6 +478,7 @@ export default function TicketHistory() {
                       <path d="M5 3l4 4-4 4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
                     </svg>
                   </div>
+
                 </div>
               );
             })}
@@ -467,7 +504,7 @@ export default function TicketHistory() {
 
       </div>
 
-      {/* ── Detail drawer ── */}
+      {/* ── Detail Drawer ── */}
       {selected && <TicketDrawer ticket={selected} onClose={() => setSelected(null)} />}
     </>
   );
