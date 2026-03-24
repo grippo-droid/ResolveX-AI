@@ -26,6 +26,51 @@ interface AIResult {
   processingTime: number;
 }
 
+// ── Ticket History Entry (saved to localStorage) ───────────────────────────
+export interface TicketHistoryEntry {
+  ticketId:       string;
+  title:          string;
+  category:       string;
+  priority:       string;
+  user:           string;
+  department:     string;
+  system:         string;
+  description:    string;
+  decision:       Decision;
+  confidence:     number;
+  intent:         string;
+  suggestedFix:   string;
+  explanation:    string;
+  processingTime: number;
+  hasImage:       boolean;
+  submittedAt:    string; // ISO string
+}
+
+const HISTORY_KEY = "resolvex_ticket_history";
+
+function saveTicketToHistory(form: TicketForm, result: AIResult) {
+  const existing: TicketHistoryEntry[] = JSON.parse(localStorage.getItem(HISTORY_KEY) || "[]");
+  const entry: TicketHistoryEntry = {
+    ticketId:       result.ticketId,
+    title:          form.title,
+    category:       form.category,
+    priority:       form.priority,
+    user:           form.user,
+    department:     form.department,
+    system:         form.system,
+    description:    form.description,
+    decision:       result.decision,
+    confidence:     result.confidence,
+    intent:         result.intent,
+    suggestedFix:   result.suggestedFix,
+    explanation:    result.explanation,
+    processingTime: result.processingTime,
+    hasImage:       !!form.image,
+    submittedAt:    new Date().toISOString(),
+  };
+  localStorage.setItem(HISTORY_KEY, JSON.stringify([entry, ...existing]));
+}
+
 // ── Mock AI engine ─────────────────────────────────────────────────────────
 function simulateAI(form: TicketForm): Promise<AIResult> {
   return new Promise((resolve) => {
@@ -71,7 +116,6 @@ function simulateAI(form: TicketForm): Promise<AIResult> {
       explanation= "Performance issues have a 71% auto-resolution rate. Running standard remediation steps. Agent will follow up if not resolved.";
     }
 
-    // Slight confidence boost if image attached
     if (form.image && confidence < 95) confidence = Math.min(confidence + 6, 99);
 
     let decision: Decision;
@@ -93,43 +137,6 @@ function simulateAI(form: TicketForm): Promise<AIResult> {
       processingTime: Math.round(processingTime),
     }), processingTime);
   });
-}
-
-// ── Processing steps ───────────────────────────────────────────────────────
-const STEPS = [
-  { label: "Parsing ticket content",       icon: "📥" },
-  { label: "Extracting intent & entities", icon: "🧠" },
-  { label: "Analyzing screenshot",         icon: "🖼️" },
-  { label: "Searching knowledge base",     icon: "🔍" },
-  { label: "Calculating confidence score", icon: "📊" },
-  { label: "Running policy engine",        icon: "🛡️" },
-  { label: "Generating decision",          icon: "⚡" },
-];
-
-// ── Confidence ring ────────────────────────────────────────────────────────
-function ConfidenceRing({ value, animate }: { value: number; animate: boolean }) {
-  const safe   = Math.min(100, Math.max(0, value));
-  const radius = 54;
-  const circ   = 2 * Math.PI * radius;
-  const offset = circ - (safe / 100) * circ;
-  const color  = safe >= 80 ? "#16a34a" : safe >= 55 ? "#b45309" : "#FF4D00";
-
-  return (
-    <div className="relative w-36 h-36 flex items-center justify-center">
-      <svg width="144" height="144" viewBox="0 0 144 144" style={{ transform: "rotate(-90deg)" }}>
-        <circle cx="72" cy="72" r={radius} fill="none" stroke="rgba(10,10,10,0.08)" strokeWidth="10"/>
-        <circle cx="72" cy="72" r={radius} fill="none" stroke={color} strokeWidth="10"
-          strokeLinecap="round" strokeDasharray={circ}
-          strokeDashoffset={animate ? offset : circ}
-          style={{ transition: "stroke-dashoffset 1.2s cubic-bezier(0.22,1,0.36,1)" }}
-        />
-      </svg>
-      <div className="absolute inset-0 flex flex-col items-center justify-center">
-        <span className="text-3xl font-extrabold" style={{ color }}>{safe}%</span>
-        <span className="text-xs font-medium text-[#6B6B6B] mt-0.5">confidence</span>
-      </div>
-    </div>
-  );
 }
 
 // ── Constants ──────────────────────────────────────────────────────────────
@@ -155,11 +162,13 @@ const SYSTEMS = [
   "Zoom", "Microsoft Teams", "Laptop / Desktop", "Printer", "Other",
 ];
 
-const DECISION_CONFIG: Record<Decision, { label: string; color: string; bg: string; border: string; icon: string; desc: string }> = {
-  "auto-resolved": { label: "Auto Resolved",  color: "#15803d", bg: "#f0fdf4", border: "#bbf7d0", icon: "✓",  desc: "AI resolved this ticket automatically. No human action required."                          },
-  "human-review":  { label: "Human Review",   color: "#b45309", bg: "#fffbeb", border: "#fde68a", icon: "👤", desc: "AI suggests a fix. A support engineer will verify before applying."                       },
-  "escalated":     { label: "Escalated",      color: "#FF4D00", bg: "#fff7f5", border: "#ffd0c0", icon: "⬆",  desc: "This ticket requires immediate human attention. Escalated to senior team."               },
+const DECISION_META: Record<Decision, { label: string; color: string; bg: string; border: string }> = {
+  "auto-resolved": { label: "Auto Resolved",  color: "#15803d", bg: "#f0fdf4", border: "#bbf7d0" },
+  "human-review":  { label: "Under Review",   color: "#b45309", bg: "#fffbeb", border: "#fde68a" },
+  "escalated":     { label: "Escalated",      color: "#FF4D00", bg: "#fff7f5", border: "#ffd0c0" },
 };
+
+const AUTO_RESET_SECONDS = 5;
 
 // ── Main ───────────────────────────────────────────────────────────────────
 export default function Simulation() {
@@ -167,33 +176,35 @@ export default function Simulation() {
     title: "", category: "", priority: "", description: "",
     system: "", user: "", department: "", image: null,
   });
-  const [errors, setErrors]           = useState<Partial<Record<keyof TicketForm, string>>>({});
-  const [phase, setPhase]             = useState<"form" | "processing" | "result">("form");
-  const [stepIndex, setStepIndex]     = useState(0);
-  const [result, setResult]           = useState<AIResult | null>(null);
-  const [ringAnimate, setRingAnimate] = useState(false);
+  const [errors, setErrors]             = useState<Partial<Record<keyof TicketForm, string>>>({});
+  const [phase, setPhase]               = useState<"form" | "processing" | "thankyou">("form");
+  const [result, setResult]             = useState<AIResult | null>(null);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
-  const [dragOver, setDragOver]       = useState(false);
-  const fileInputRef                  = useRef<HTMLInputElement>(null);
-  const stepTimer                     = useRef<ReturnType<typeof setInterval> | null>(null);
+  const [dragOver, setDragOver]         = useState(false);
+  const [countdown, setCountdown]       = useState(AUTO_RESET_SECONDS);
+  const fileInputRef                    = useRef<HTMLInputElement>(null);
+  const countdownRef                    = useRef<ReturnType<typeof setInterval> | null>(null);
 
+  // Auto-reset countdown after thank you screen
   useEffect(() => {
-    if (phase !== "processing") return;
-    setStepIndex(0);
-    stepTimer.current = setInterval(() => {
-      setStepIndex(prev => {
-        if (prev >= STEPS.length - 1) { if (stepTimer.current) clearInterval(stepTimer.current); return prev; }
-        return prev + 1;
+    if (phase !== "thankyou") return;
+    setCountdown(AUTO_RESET_SECONDS);
+    countdownRef.current = setInterval(() => {
+      setCountdown(prev => {
+        if (prev <= 1) {
+          if (countdownRef.current) clearInterval(countdownRef.current);
+          return 0;
+        }
+        return prev - 1;
       });
-    }, 320);
-    return () => { if (stepTimer.current) clearInterval(stepTimer.current); };
+    }, 1000);
+    return () => { if (countdownRef.current) clearInterval(countdownRef.current); };
   }, [phase]);
 
+  // Trigger reset when countdown hits 0
   useEffect(() => {
-    if (phase !== "result") return;
-    const t = setTimeout(() => setRingAnimate(true), 200);
-    return () => clearTimeout(t);
-  }, [phase]);
+    if (countdown === 0 && phase === "thankyou") handleReset();
+  }, [countdown, phase]);
 
   const validate = (): boolean => {
     const e: Partial<Record<keyof TicketForm, string>> = {};
@@ -211,8 +222,9 @@ export default function Simulation() {
     try {
       setPhase("processing");
       const aiResult = await simulateAI(form);
+      saveTicketToHistory(form, aiResult);
       setResult(aiResult);
-      setPhase("result");
+      setPhase("thankyou");
     } catch (err) {
       console.error("[Simulation] AI engine error:", err);
       setPhase("form");
@@ -220,8 +232,9 @@ export default function Simulation() {
   };
 
   const handleReset = () => {
+    if (countdownRef.current) clearInterval(countdownRef.current);
     setForm({ title: "", category: "", priority: "", description: "", system: "", user: "", department: "", image: null });
-    setErrors({}); setResult(null); setRingAnimate(false); setImagePreview(null); setPhase("form");
+    setErrors({}); setResult(null); setImagePreview(null); setPhase("form");
   };
 
   const update = (field: keyof TicketForm, value: string) => {
@@ -230,8 +243,7 @@ export default function Simulation() {
   };
 
   const handleFile = (file: File | null) => {
-    if (!file) return;
-    if (!file.type.startsWith("image/")) return;
+    if (!file || !file.type.startsWith("image/")) return;
     setForm(prev => ({ ...prev, image: file }));
     const reader = new FileReader();
     reader.onload = e => setImagePreview(e.target?.result as string);
@@ -247,19 +259,20 @@ export default function Simulation() {
   return (
     <>
       <style>{`
-        @keyframes fadeUp  { from{ opacity:0; transform:translateY(16px); } to{ opacity:1; transform:translateY(0); } }
-        @keyframes fadeIn  { from{ opacity:0; } to{ opacity:1; } }
-        @keyframes stepIn  { from{ opacity:0; transform:translateX(-8px); } to{ opacity:1; transform:translateX(0); } }
-        @keyframes spin    { to{ transform:rotate(360deg); } }
-        @keyframes pulse   { 0%,100%{ opacity:1; } 50%{ opacity:0.4; } }
-        @keyframes slideUp { from{ opacity:0; transform:translateY(32px); } to{ opacity:1; transform:translateY(0); } }
+        @keyframes fadeUp    { from{ opacity:0; transform:translateY(16px); } to{ opacity:1; transform:translateY(0); } }
+        @keyframes fadeIn    { from{ opacity:0; } to{ opacity:1; } }
+        @keyframes spin      { to{ transform:rotate(360deg); } }
+        @keyframes pulse     { 0%,100%{ opacity:1; } 50%{ opacity:0.4; } }
+        @keyframes slideUp   { from{ opacity:0; transform:translateY(32px); } to{ opacity:1; transform:translateY(0); } }
+        @keyframes checkPop  { 0%{ transform:scale(0) rotate(-10deg); opacity:0; } 70%{ transform:scale(1.15) rotate(3deg); } 100%{ transform:scale(1) rotate(0deg); opacity:1; } }
+        @keyframes shrink    { from{ width:100%; } to{ width:0%; } }
 
-        .fade-up  { animation: fadeUp  0.45s ease both; }
-        .fade-in  { animation: fadeIn  0.3s  ease both; }
-        .step-in  { animation: stepIn  0.3s  ease both; }
-        .slide-up { animation: slideUp 0.5s  cubic-bezier(0.22,1,0.36,1) both; }
-        .spinner  { animation: spin    0.8s  linear infinite; }
-        .pulse-dot{ animation: pulse   1.4s  ease-in-out infinite; }
+        .fade-up   { animation: fadeUp  0.45s ease both; }
+        .fade-in   { animation: fadeIn  0.3s  ease both; }
+        .slide-up  { animation: slideUp 0.5s  cubic-bezier(0.22,1,0.36,1) both; }
+        .spinner   { animation: spin    0.8s  linear infinite; }
+        .pulse-dot { animation: pulse   1.4s  ease-in-out infinite; }
+        .check-pop { animation: checkPop 0.6s cubic-bezier(0.22,1,0.36,1) both; }
 
         .input-base {
           width:100%; background:white;
@@ -267,9 +280,9 @@ export default function Simulation() {
           padding:11px 14px; font-size:14px; color:#0A0A0A;
           outline:none; transition:border-color 0.2s, box-shadow 0.2s;
         }
-        .input-base::placeholder{ color:#ABABAB; }
-        .input-base:focus{ border-color:#FF4D00; box-shadow:0 0 0 3px rgba(255,77,0,0.08); }
-        .input-error{ border-color:#dc2626 !important; }
+        .input-base::placeholder { color:#ABABAB; }
+        .input-base:focus { border-color:#FF4D00; box-shadow:0 0 0 3px rgba(255,77,0,0.08); }
+        .input-error { border-color:#dc2626 !important; }
 
         .select-base {
           width:100%; background:white;
@@ -280,17 +293,18 @@ export default function Simulation() {
           background-repeat:no-repeat; background-position:right 14px center;
           transition:border-color 0.2s, box-shadow 0.2s;
         }
-        .select-base:focus{ border-color:#FF4D00; box-shadow:0 0 0 3px rgba(255,77,0,0.08); }
+        .select-base:focus { border-color:#FF4D00; box-shadow:0 0 0 3px rgba(255,77,0,0.08); }
       `}</style>
 
-      {/* ── PHASE: FORM ── */}
+      {/* ══════════════════════════════════════════
+          PHASE: FORM
+      ══════════════════════════════════════════ */}
       {phase === "form" && (
         <div className="fade-up flex flex-col lg:flex-row gap-5 items-start">
 
-          {/* ── LEFT: Theory panel ── */}
+          {/* LEFT: Theory panel */}
           <div className="lg:w-[270px] shrink-0 flex flex-col gap-4">
 
-            {/* Sim mode badge */}
             <div className="flex items-center gap-2.5 bg-[#FF4D00]/[0.07] border border-[#FF4D00]/20 rounded-xl px-4 py-3">
               <span className="pulse-dot w-1.5 h-1.5 rounded-full bg-[#FF4D00] shrink-0" />
               <span className="text-[12px] font-medium text-[#FF4D00] leading-snug">
@@ -298,7 +312,6 @@ export default function Simulation() {
               </span>
             </div>
 
-            {/* What happens */}
             <div className="bg-white rounded-2xl border border-black/10 p-5 flex flex-col gap-4">
               <p className="text-[13px] font-bold text-[#0A0A0A]">What happens when you submit?</p>
               {[
@@ -316,25 +329,23 @@ export default function Simulation() {
               ))}
             </div>
 
-            {/* Screenshot tip */}
             <div className="bg-white rounded-2xl border border-black/10 p-5 flex flex-col gap-3">
               <p className="text-[12px] font-bold text-[#0A0A0A]">💡 Pro tip — attach a screenshot</p>
               <p className="text-[12px] text-[#6B6B6B] leading-relaxed">
-                Attaching a screenshot of the error gives the AI more visual context, which can increase the confidence score and lead to faster resolution.
+                Attaching a screenshot of the error gives the AI more visual context, increasing the confidence score and enabling faster resolution.
               </p>
-              <div className="flex items-center gap-2">
-                <span className="text-[11px] font-semibold px-2 py-0.5 rounded-full bg-[#16a34a]/10 text-[#16a34a]">+6% confidence boost</span>
-              </div>
+              <span className="text-[11px] font-semibold px-2 py-0.5 rounded-full bg-[#16a34a]/10 text-[#16a34a] w-fit">
+                +6% confidence boost
+              </span>
             </div>
 
-            {/* Sample outcomes */}
             <div className="bg-[#0A0A0A] rounded-2xl p-5 flex flex-col gap-3">
               <p className="text-[11px] font-bold uppercase tracking-[1.4px] text-[#FF4D00]">Sample Outcomes</p>
               {[
-                { label: "Password Reset",  status: "Auto Resolved",  color: "#16a34a" },
-                { label: "Prod DB Access",  status: "Escalated",      color: "#FF4D00" },
-                { label: "Outlook Sync",    status: "Under Review",   color: "#b45309" },
-                { label: "VPN Not Working", status: "Auto Resolved",  color: "#16a34a" },
+                { label: "Password Reset",  status: "Auto Resolved", color: "#16a34a" },
+                { label: "Prod DB Access",  status: "Escalated",     color: "#FF4D00" },
+                { label: "Outlook Sync",    status: "Under Review",  color: "#b45309" },
+                { label: "VPN Not Working", status: "Auto Resolved", color: "#16a34a" },
               ].map(o => (
                 <div key={o.label} className="flex items-center justify-between">
                   <span className="text-[12px] text-[#888]">{o.label}</span>
@@ -345,10 +356,9 @@ export default function Simulation() {
             </div>
           </div>
 
-          {/* ── RIGHT: Form ── */}
+          {/* RIGHT: Form */}
           <div className="flex-1 bg-white/70 border border-black/[0.08] rounded-2xl p-6 flex flex-col gap-5">
 
-            {/* Header */}
             <div>
               <div className="inline-flex items-center gap-2 bg-[#FF4D00]/10 border border-[#FF4D00]/20 text-[#FF4D00] text-[11px] font-bold tracking-widest uppercase px-3 py-1.5 rounded-full mb-3">
                 <span className="pulse-dot w-1.5 h-1.5 rounded-full bg-[#FF4D00]" />
@@ -438,20 +448,19 @@ export default function Simulation() {
               {errors.description && <p className="text-xs text-red-600">{errors.description}</p>}
             </div>
 
-            {/* ── Screenshot upload ── */}
+            {/* Screenshot upload */}
             <div className="flex flex-col gap-1.5">
               <label className="text-[13px] font-semibold text-[#0A0A0A]">
                 Screenshot / Attachment
                 <span className="text-[#ABABAB] font-normal ml-1.5 text-[12px]">(optional — boosts AI confidence)</span>
               </label>
-
               {!imagePreview ? (
                 <div
                   onDragOver={e => { e.preventDefault(); setDragOver(true); }}
                   onDragLeave={() => setDragOver(false)}
                   onDrop={e => { e.preventDefault(); setDragOver(false); handleFile(e.dataTransfer.files?.[0] ?? null); }}
                   onClick={() => fileInputRef.current?.click()}
-                  className="relative flex flex-col items-center justify-center gap-2 border-[1.5px] border-dashed rounded-xl py-7 cursor-pointer transition-all duration-200"
+                  className="flex flex-col items-center justify-center gap-2 border-[1.5px] border-dashed rounded-xl py-7 cursor-pointer transition-all duration-200"
                   style={{
                     borderColor: dragOver ? "#FF4D00" : "rgba(10,10,10,0.15)",
                     background:  dragOver ? "rgba(255,77,0,0.04)" : "white",
@@ -497,10 +506,10 @@ export default function Simulation() {
               <p className="text-[11px] font-bold tracking-[1.2px] uppercase text-[#ABABAB]">Try a sample ticket</p>
               <div className="flex flex-wrap gap-2">
                 {[
-                  { label: "Password reset", title: "Need to reset my LDAP password",     category: "access"   as Category, priority: "medium" as Priority, desc: "I forgot my LDAP password and cannot log into my workstation or any internal tools. I need an urgent password reset.", system: "Active Directory" },
-                  { label: "VPN issue",       title: "VPN not connecting after update",    category: "network"  as Category, priority: "high"   as Priority, desc: "After the latest Windows update, I cannot connect to the company VPN. It shows 'Authentication failed' even though my credentials are correct.", system: "VPN Client" },
-                  { label: "Access request",  title: "Request access to Production DB",   category: "access"   as Category, priority: "high"   as Priority, desc: "I need read access to the production database to investigate a client reported data discrepancy. Please grant access at the earliest.", system: "AWS Console" },
-                  { label: "Outlook sync",    title: "Outlook not syncing emails",         category: "software" as Category, priority: "medium" as Priority, desc: "Outlook stopped syncing about 2 hours ago. New emails are not appearing. I have tried restarting the app but the issue persists.", system: "Microsoft Outlook" },
+                  { label: "Password reset", title: "Need to reset my LDAP password",    category: "access"   as Category, priority: "medium" as Priority, desc: "I forgot my LDAP password and cannot log into my workstation or any internal tools. I need an urgent password reset.", system: "Active Directory" },
+                  { label: "VPN issue",       title: "VPN not connecting after update",   category: "network"  as Category, priority: "high"   as Priority, desc: "After the latest Windows update, I cannot connect to the company VPN. It shows 'Authentication failed' even though my credentials are correct.", system: "VPN Client" },
+                  { label: "Access request",  title: "Request access to Production DB",  category: "access"   as Category, priority: "high"   as Priority, desc: "I need read access to the production database to investigate a client reported data discrepancy. Please grant access at the earliest.", system: "AWS Console" },
+                  { label: "Outlook sync",    title: "Outlook not syncing emails",        category: "software" as Category, priority: "medium" as Priority, desc: "Outlook stopped syncing about 2 hours ago. New emails are not appearing. I have tried restarting the app but the issue persists.", system: "Microsoft Outlook" },
                 ].map(ex => (
                   <button key={ex.label} type="button"
                     onClick={() => setForm(prev => ({ ...prev, title: ex.title, category: ex.category, priority: ex.priority, description: ex.desc, system: ex.system }))}
@@ -528,12 +537,15 @@ export default function Simulation() {
         </div>
       )}
 
-      {/* ── PHASE: PROCESSING ── */}
+      {/* ══════════════════════════════════════════
+          PHASE: PROCESSING (clean spinner only)
+      ══════════════════════════════════════════ */}
       {phase === "processing" && (
-        <div className="fade-in flex flex-col items-center justify-center min-h-[60vh] text-center gap-8">
+        <div className="fade-in flex flex-col items-center justify-center min-h-[60vh] text-center gap-6">
           <div className="relative">
             <div className="w-20 h-20 rounded-full border-[3px] border-black/[0.06]" />
-            <div className="spinner absolute inset-0 rounded-full border-[3px] border-transparent" style={{ borderTopColor: "#FF4D00" }} />
+            <div className="spinner absolute inset-0 rounded-full border-[3px] border-transparent"
+              style={{ borderTopColor: "#FF4D00" }} />
             <div className="absolute inset-0 flex items-center justify-center">
               <div className="w-8 h-8 bg-[#0A0A0A] rounded-lg flex items-center justify-center">
                 <svg width="14" height="14" viewBox="0 0 18 18" fill="none">
@@ -544,150 +556,134 @@ export default function Simulation() {
             </div>
           </div>
           <div>
-            <h2 className="text-xl font-extrabold text-[#0A0A0A] tracking-tight mb-1">AI Engine Processing</h2>
+            <h2 className="text-xl font-extrabold text-[#0A0A0A] tracking-tight mb-1">Analyzing your ticket…</h2>
             <p className="text-sm text-[#6B6B6B]">
-              Running your ticket through the decision pipeline{form.image ? " + analyzing screenshot" : ""}…
+              Our AI engine is classifying and scoring your request{form.image ? " + analyzing your screenshot" : ""}.
             </p>
-          </div>
-          <div className="w-full max-w-sm flex flex-col gap-2.5">
-            {STEPS.map((step, i) => {
-              const done    = i < stepIndex;
-              const current = i === stepIndex;
-              // skip screenshot step if no image
-              if (step.icon === "🖼️" && !form.image) return null;
-              return (
-                <div key={step.label} className="step-in flex items-center gap-3 px-4 py-3 rounded-xl border transition-all duration-300"
-                  style={{
-                    animationDelay: `${i * 0.05}s`,
-                    background:  current ? "rgba(255,77,0,0.06)" : done ? "white" : "rgba(255,255,255,0.4)",
-                    borderColor: current ? "rgba(255,77,0,0.25)" : done ? "rgba(10,10,10,0.08)" : "rgba(10,10,10,0.05)",
-                    opacity:     i > stepIndex + 1 ? 0.35 : 1,
-                  }}>
-                  <span className="text-base shrink-0 w-6 text-center">{done ? "✓" : current ? step.icon : "○"}</span>
-                  <span className="text-sm font-medium" style={{ color: current ? "#FF4D00" : done ? "#0A0A0A" : "#ABABAB" }}>
-                    {step.label}
-                  </span>
-                  {current && (
-                    <div className="ml-auto flex gap-1">
-                      {[0,1,2].map(d => (
-                        <span key={d} className="w-1.5 h-1.5 rounded-full bg-[#FF4D00]"
-                          style={{ animation: `pulse 1s ease-in-out ${d * 0.15}s infinite` }} />
-                      ))}
-                    </div>
-                  )}
-                  {done && <span className="ml-auto text-xs font-bold text-green-600">Done</span>}
-                </div>
-              );
-            })}
           </div>
         </div>
       )}
 
-      {/* ── PHASE: RESULT ── */}
-      {phase === "result" && result && (() => {
-        const cfg = DECISION_CONFIG[result.decision];
+      {/* ══════════════════════════════════════════
+          PHASE: THANK YOU
+      ══════════════════════════════════════════ */}
+      {phase === "thankyou" && result && (() => {
+        const meta = DECISION_META[result.decision];
+        const priorityColor = PRIORITIES.find(p => p.value === form.priority)?.color ?? "#6B6B6B";
         return (
-          <div className="slide-up flex flex-col gap-5">
+          <div className="slide-up flex flex-col items-center justify-center min-h-[60vh] gap-0">
+            <div className="w-full max-w-[520px] flex flex-col items-center gap-6">
 
-            <div className="flex items-start justify-between flex-wrap gap-4">
-              <div>
-                <div className="flex items-center gap-2 mb-2">
-                  <span className="text-xs font-bold px-2.5 py-1 rounded-full border"
-                    style={{ color: cfg.color, background: cfg.bg, borderColor: cfg.border }}>
-                    {cfg.icon} {cfg.label}
-                  </span>
-                  <span className="text-xs text-[#ABABAB] font-mono">{result.ticketId}</span>
-                  {form.image && (
-                    <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-[#16a34a]/10 text-[#16a34a]">
-                      📎 Screenshot analyzed
-                    </span>
-                  )}
-                </div>
-                <h2 className="text-[22px] font-extrabold text-[#0A0A0A] tracking-tight leading-tight">AI Decision Complete</h2>
-                <p className="text-sm text-[#6B6B6B] mt-1">
-                  Processed in {result.processingTime}ms · Intent: <strong className="text-[#0A0A0A]">{result.intent}</strong>
+              {/* Check icon */}
+              <div className="check-pop w-20 h-20 rounded-full bg-[#0A0A0A] flex items-center justify-center shadow-xl">
+                <svg width="36" height="36" viewBox="0 0 36 36" fill="none">
+                  <path d="M8 18l7 7 13-13" stroke="#FF4D00" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"/>
+                </svg>
+              </div>
+
+              {/* Heading */}
+              <div className="text-center">
+                <h2 className="text-[26px] font-extrabold text-[#0A0A0A] tracking-tight leading-tight mb-2">
+                  Ticket Submitted!
+                </h2>
+                <p className="text-[14px] text-[#6B6B6B] leading-relaxed max-w-[380px] mx-auto">
+                  Thank you, <strong className="text-[#0A0A0A]">{form.user}</strong>. Your ticket has been received and our AI engine has processed it. You can track the status in Ticket History.
                 </p>
               </div>
-              <button onClick={handleReset}
-                className="text-sm font-semibold text-[#6B6B6B] hover:text-[#0A0A0A] border border-black/10 hover:border-black/20 px-4 py-2 rounded-xl transition-all bg-white cursor-pointer">
-                + New Ticket
-              </button>
-            </div>
 
-            {/* Confidence ring */}
-            <div className="flex flex-col sm:flex-row items-center gap-6 p-6 rounded-2xl border"
-              style={{ background: cfg.bg, borderColor: cfg.border }}>
-              <ConfidenceRing value={result.confidence} animate={ringAnimate} />
-              <div className="flex-1 text-center sm:text-left">
-                <p className="text-[11px] font-bold tracking-[1.4px] uppercase mb-2" style={{ color: cfg.color }}>Decision</p>
-                <p className="text-xl font-extrabold text-[#0A0A0A] tracking-tight mb-2">{cfg.label}</p>
-                <p className="text-sm leading-relaxed" style={{ color: cfg.color }}>{cfg.desc}</p>
-              </div>
-            </div>
+              {/* Ticket card */}
+              <div className="w-full bg-white rounded-2xl border border-black/10 overflow-hidden">
 
-            {/* Screenshot in result */}
-            {imagePreview && (
-              <div className="bg-white/80 border border-black/[0.08] rounded-2xl p-5 flex flex-col gap-3">
-                <h3 className="text-sm font-bold text-[#0A0A0A]">Attached Screenshot</h3>
-                <img src={imagePreview} alt="Submitted screenshot" className="w-full max-h-[200px] object-cover rounded-xl border border-black/[0.06]" />
-              </div>
-            )}
-
-            {/* Suggested fix */}
-            <div className="bg-white/80 border border-black/[0.08] rounded-2xl p-6">
-              <div className="flex items-center gap-2 mb-3">
-                <div className="w-7 h-7 bg-[#0A0A0A] rounded-lg flex items-center justify-center shrink-0">
-                  <svg width="13" height="13" viewBox="0 0 13 13" fill="none">
-                    <path d="M6.5 1v2M6.5 10v2M1 6.5h2M10 6.5h2M2.9 2.9l1.4 1.4M8.7 8.7l1.4 1.4M2.9 10.1l1.4-1.4M8.7 4.3l1.4-1.4" stroke="#E9E9E9" strokeWidth="1.3" strokeLinecap="round"/>
-                  </svg>
-                </div>
-                <h3 className="text-sm font-bold text-[#0A0A0A]">Suggested Resolution</h3>
-              </div>
-              <p className="text-sm text-[#3a3a3a] leading-relaxed">{result.suggestedFix}</p>
-            </div>
-
-            {/* Explainability */}
-            <div className="bg-white/80 border border-black/[0.08] rounded-2xl p-6">
-              <div className="flex items-center gap-2 mb-3">
-                <div className="w-7 h-7 bg-[#FF4D00]/10 border border-[#FF4D00]/20 rounded-lg flex items-center justify-center shrink-0">
-                  <svg width="13" height="13" viewBox="0 0 13 13" fill="none">
-                    <circle cx="6.5" cy="6.5" r="5.5" stroke="#FF4D00" strokeWidth="1.3"/>
-                    <path d="M6.5 4.5V7M6.5 9v.5" stroke="#FF4D00" strokeWidth="1.3" strokeLinecap="round"/>
-                  </svg>
-                </div>
-                <h3 className="text-sm font-bold text-[#0A0A0A]">Why this decision?</h3>
-                <span className="ml-auto text-[11px] font-semibold text-[#FF4D00] bg-[#FF4D00]/10 px-2 py-0.5 rounded-full">
-                  Explainable AI
-                </span>
-              </div>
-              <p className="text-sm text-[#3a3a3a] leading-relaxed">{result.explanation}</p>
-            </div>
-
-            {/* Ticket summary */}
-            <div className="bg-white/80 border border-black/[0.08] rounded-2xl p-6">
-              <h3 className="text-sm font-bold text-[#0A0A0A] mb-4">Ticket Summary</h3>
-              <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
-                {[
-                  { label: "Ticket ID",      value: result.ticketId },
-                  { label: "Submitted by",   value: form.user || "—" },
-                  { label: "Category",       value: CATEGORIES.find(c => c.value === form.category)?.label || "—" },
-                  { label: "Priority",       value: form.priority ? form.priority.charAt(0).toUpperCase() + form.priority.slice(1) : "—" },
-                  { label: "System",         value: form.system || "—" },
-                  { label: "Screenshot",     value: form.image ? "✓ Attached" : "None" },
-                ].map(item => (
-                  <div key={item.label}>
-                    <p className="text-[11px] font-bold tracking-[1px] uppercase text-[#ABABAB] mb-0.5">{item.label}</p>
-                    <p className="text-[13px] font-semibold text-[#0A0A0A]">{item.value}</p>
+                {/* Status bar */}
+                <div className="px-5 py-3.5 flex items-center justify-between"
+                  style={{ background: meta.bg, borderBottom: `1px solid ${meta.border}` }}>
+                  <div className="flex items-center gap-2">
+                    <div className="w-2 h-2 rounded-full" style={{ background: meta.color }} />
+                    <span className="text-[13px] font-bold" style={{ color: meta.color }}>{meta.label}</span>
                   </div>
-                ))}
-              </div>
-            </div>
+                  <span className="text-[12px] font-mono font-semibold text-[#6B6B6B]">{result.ticketId}</span>
+                </div>
 
-            <div className="flex flex-wrap gap-3">
-              <button onClick={handleReset}
-                className="flex items-center gap-2 bg-[#0A0A0A] text-[#E9E9E9] text-sm font-bold px-5 py-3 rounded-xl border-none cursor-pointer hover:bg-[#1a1a1a] transition-all hover:-translate-y-px">
-                Submit Another Ticket
-              </button>
+                {/* Details */}
+                <div className="p-5 flex flex-col gap-4">
+                  <div>
+                    <p className="text-[15px] font-bold text-[#0A0A0A] leading-snug">{form.title}</p>
+                    <div className="flex flex-wrap gap-2 mt-2">
+                      <span className="text-[11px] font-semibold px-2.5 py-1 rounded-full bg-black/[0.06] text-[#6B6B6B]">
+                        {CATEGORIES.find(c => c.value === form.category)?.icon} {CATEGORIES.find(c => c.value === form.category)?.label}
+                      </span>
+                      <span className="text-[11px] font-semibold px-2.5 py-1 rounded-full border"
+                        style={{ color: priorityColor, background: priorityColor + "14", borderColor: priorityColor + "44" }}>
+                        {form.priority.charAt(0).toUpperCase() + form.priority.slice(1)} Priority
+                      </span>
+                      {form.image && (
+                        <span className="text-[11px] font-semibold px-2.5 py-1 rounded-full bg-[#16a34a]/10 text-[#16a34a]">
+                          📎 Screenshot attached
+                        </span>
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="border-t border-black/[0.06]" />
+
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <p className="text-[10px] font-bold uppercase tracking-[1.2px] text-[#ABABAB] mb-0.5">AI Confidence</p>
+                      <div className="flex items-center gap-2">
+                        <span className="text-[13px] font-bold" style={{ color: meta.color }}>{result.confidence}%</span>
+                        <div className="flex-1 h-1 rounded-full bg-black/[0.08] overflow-hidden">
+                          <div className="h-full rounded-full" style={{ width: `${result.confidence}%`, background: meta.color }} />
+                        </div>
+                      </div>
+                    </div>
+                    <div>
+                      <p className="text-[10px] font-bold uppercase tracking-[1.2px] text-[#ABABAB] mb-0.5">Detected Intent</p>
+                      <p className="text-[13px] font-semibold text-[#0A0A0A]">{result.intent}</p>
+                    </div>
+                  </div>
+
+                  {/* What's next note */}
+                  <div className="flex items-start gap-3 bg-[#F5F5F5] rounded-xl px-4 py-3">
+                    <svg width="15" height="15" viewBox="0 0 15 15" fill="none" className="shrink-0 mt-0.5 text-[#6B6B6B]">
+                      <circle cx="7.5" cy="7.5" r="6" stroke="currentColor" strokeWidth="1.3"/>
+                      <path d="M7.5 5v3.5M7.5 10.5v.5" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round"/>
+                    </svg>
+                    <p className="text-[12px] text-[#6B6B6B] leading-relaxed">
+                      {result.decision === "auto-resolved"
+                        ? "This ticket was auto-resolved by the AI. Check your email for confirmation. No further action required."
+                        : result.decision === "human-review"
+                        ? "A support engineer will review the AI's suggested fix and respond within 1 business day."
+                        : "This ticket has been escalated to the senior IT team due to its priority. Expect a response within 2 hours."}
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Auto-reset countdown */}
+              <div className="w-full flex flex-col gap-2">
+                <div className="flex items-center justify-between">
+                  <p className="text-[12px] text-[#ABABAB]">Resetting form automatically…</p>
+                  <span className="text-[12px] font-bold text-[#0A0A0A]">{countdown}s</span>
+                </div>
+                <div className="h-1 w-full bg-black/[0.07] rounded-full overflow-hidden">
+                  <div
+                    className="h-full bg-[#FF4D00] rounded-full"
+                    style={{
+                      width: `${(countdown / AUTO_RESET_SECONDS) * 100}%`,
+                      transition: "width 1s linear",
+                    }}
+                  />
+                </div>
+              </div>
+
+              {/* Actions */}
+              <div className="flex items-center gap-3">
+                <button onClick={handleReset}
+                  className="flex items-center gap-2 bg-[#0A0A0A] text-[#E9E9E9] text-[13px] font-bold px-5 py-2.5 rounded-xl border-none cursor-pointer hover:bg-[#1a1a1a] transition-all">
+                  Submit Another Ticket
+                </button>
+              </div>
+
             </div>
           </div>
         );

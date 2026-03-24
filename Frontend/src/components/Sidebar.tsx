@@ -24,13 +24,9 @@ const NAV_MAIN: NavItem[] = [
   { id: "feedback",  label: "Feedback",     icon: Icons.feedback              },
 ];
 
-const NAV_SYSTEM: NavItem[] = [
-  { id: "settings", label: "Settings", icon: Icons.settings },
-];
-
-// ── NEW ──
 const NAV_TRIAL: NavItem[] = [
-  { id: "simulation", label: "Simulation", icon: Icons.simulation },
+  { id: "simulation",    label: "Simulation",     icon: Icons.simulation },
+  { id: "tickethistory", label: "Ticket History", icon: Icons.history    },
 ];
 
 function Tooltip({ label }: { label: string }) {
@@ -76,7 +72,8 @@ function NavRow({ item, isOpen, isActive, onClick }: {
         )}
 
         {isOpen && item.badge !== undefined && (
-          <span className="bg-[#FF4D00] text-white font-bold px-2.5 py-0.5 rounded-full min-w-[24px] text-center shrink-0" style={{ fontSize: 11 }}>
+          <span className="bg-[#FF4D00] text-white font-bold px-2.5 py-0.5 rounded-full min-w-[24px] text-center shrink-0"
+            style={{ fontSize: 11 }}>
             {item.badge}
           </span>
         )}
@@ -163,22 +160,6 @@ export default function Sidebar({ isOpen, onToggle, activeId, onActiveChange }: 
             {!isOpen && <div className="h-2" />}
             <ul className="flex flex-col gap-1 p-0 m-0">
               {NAV_MAIN.map(item => (
-                <NavRow key={item.id} item={item} isOpen={isOpen} isActive={activeId === item.id} onClick={onActiveChange} />
-              ))}
-            </ul>
-          </div>
-
-          <div className="border-t border-white/[0.06] mx-2" />
-
-          {/* System */}
-          <div className="flex flex-col gap-1.5">
-            {isOpen && (
-              <p className="font-bold uppercase text-[#404040] px-4 mb-2" style={{ fontSize: 11, letterSpacing: "2.5px" }}>
-                System
-              </p>
-            )}
-            <ul className="flex flex-col gap-1 p-0 m-0">
-              {NAV_SYSTEM.map(item => (
                 <NavRow key={item.id} item={item} isOpen={isOpen} isActive={activeId === item.id} onClick={onActiveChange} />
               ))}
             </ul>
