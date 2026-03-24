@@ -15,12 +15,11 @@ jobs:
       with:
         node-version: '22.12.0'
         cache: 'npm'
-        cache-dependency-path: 'Frontend/package-lock.json'  # ✅ FIX
     
-    - name: Install & Build Frontend
+    - name: Install & Build Frontend  # ✅ FIXED
       run: |
         cd Frontend
-        npm ci  # ✅ Uses package-lock.json
+        npm install                    # ✅ npm install (not npm ci)
         echo 'VITE_API_URL=/api' > .env
         npm run build
     
@@ -33,6 +32,7 @@ jobs:
         source: "Frontend/dist/**/*"
         target: "/var/www/resolvex/"
         strip_components: 0
+        rm: true  # ✅ Clear old files
     
     - name: Fix Permissions
       uses: appleboy/ssh-action@v1.0.3
@@ -43,3 +43,4 @@ jobs:
         script: |
           sudo chown -R www-data:www-data /var/www/resolvex
           sudo systemctl reload nginx
+          curl -I http://localhost/
