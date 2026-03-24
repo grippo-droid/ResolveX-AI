@@ -44,7 +44,7 @@ def llm_classify_fallback(text: str) -> Tuple[str, float]:
     
     try:
         completion = groq_client.chat.completions.create(
-            model="llama3-8b-8192",
+            model="llama-3.3-70b-versatile",
             messages=[
                 {
                     "role": "system", 
