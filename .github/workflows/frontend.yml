@@ -1,0 +1,36 @@
+name: Frontend CI/CD
+on:
+  push:
+    branches: [main]
+    paths: ['Frontend/**', '.github/workflows/frontend.yml']
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '22.12.0'
+        cache: 'npm'
+    
+    - name: Install & Build
+      run: |
+        cd Frontend
+        npm ci
+        echo 'VITE_API_URL=/api' > .env
+        npm run build
+    
+    - name: Deploy to EC2
+      uses: appleboy/ssh-action@v1.0.3
+      with:
+        host: ${{ secrets.EC2_HOST }}
+        username: ${{ secrets.EC2_USER }}
+        key: ${{ secrets.EC2_SSH_KEY }}
+        script: |
+          cd ~/ResolveX-AI
+          sudo rm -rf /var/www/resolvex/*
+          # Copy built files from GitHub runner via scp or direct
+          # (Alternative: rsync or artifact upload)

@@ -1,0 +1,25 @@
+name: Backend CI/CD
+on:
+  push:
+    branches: [main]
+    paths: ['Backend/**', '.github/workflows/backend.yml']
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Deploy to EC2
+      uses: appleboy/ssh-action@v1.0.3
+      with:
+        host: ${{ secrets.EC2_HOST }}
+        username: ${{ secrets.EC2_USER }}
+        key: ${{ secrets.EC2_SSH_KEY }}
+        script: |
+          cd ~/ResolveX-AI/Backend
+          git pull origin main
+          source venv/bin/activate
+          pip install -r requirements.txt --quiet
+          sudo systemctl restart resolvex-backend
+          sudo systemctl status resolvex-backend --no-pager
