@@ -63,7 +63,7 @@ export async function submitTicket(payload: TicketPayload): Promise<TicketAPIRes
     formData.append("image", payload.image);
   }
 
-  const res = await fetch(`${BASE_URL}/api/v1/tickets`, {
+  const res = await fetch(`${BASE_URL}/v1/tickets`, {
     method: "POST",
     body:   formData,
     // ⚠️ No Content-Type — browser sets it automatically for FormData
@@ -93,7 +93,7 @@ export async function getTickets(
     ...(category && { category }),
   });
 
-  const res = await fetch(`${BASE_URL}/api/v1/tickets?${params}`);
+  const res = await fetch(`${BASE_URL}/v1/tickets?${params}`);
 
   if (!res.ok) {
     const error = await res.json().catch(() => ({ detail: "Unknown error" }));
@@ -106,7 +106,7 @@ export async function getTickets(
 // ── Get Single Ticket (GET /tickets/:id) ───────────────────────────────────
 
 export async function getTicketById(ticketId: number): Promise<TicketAPIResponse> {
-  const res = await fetch(`${BASE_URL}/api/v1/tickets/${ticketId}`);
+  const res = await fetch(`${BASE_URL}/v1/tickets/${ticketId}`);
 
   if (!res.ok) {
     const error = await res.json().catch(() => ({ detail: "Unknown error" }));
@@ -122,7 +122,7 @@ export async function updateTicket(
   ticketId: number,
   payload:  TicketUpdatePayload,
 ): Promise<TicketAPIResponse> {
-  const res = await fetch(`${BASE_URL}/api/v1/tickets/${ticketId}`, {
+  const res = await fetch(`${BASE_URL}/v1/tickets/${ticketId}`, {
     method:  "PATCH",
     headers: { "Content-Type": "application/json" },
     body:    JSON.stringify(payload),
@@ -139,7 +139,7 @@ export async function updateTicket(
 // ── Delete Ticket (DELETE /tickets/:id) ───────────────────────────────────
 
 export async function deleteTicket(ticketId: number): Promise<void> {
-  const res = await fetch(`${BASE_URL}/api/v1/tickets/${ticketId}`, {
+  const res = await fetch(`${BASE_URL}/v1/tickets/${ticketId}`, {
     method: "DELETE",
   });
 
@@ -167,7 +167,7 @@ export async function resolveTicket(
   force = false,
 ): Promise<ResolutionAPIResponse> {
   const res = await fetch(
-    `${BASE_URL}/api/v1/resolve/${ticketId}?force=${force}`,
+    `${BASE_URL}/v1/resolve/${ticketId}?force=${force}`,
     { method: "POST" },
   );
 
