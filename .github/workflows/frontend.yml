@@ -1,4 +1,5 @@
 name: Frontend CI/CD
+
 on:
   push:
     branches: [main]
@@ -7,40 +8,83 @@ on:
 jobs:
   deploy:
     runs-on: ubuntu-latest
+
     steps:
-    - uses: actions/checkout@v4
-    
+    - name: Checkout Code
+      uses: actions/checkout@v4
+
+    # 🔧 Setup Node
     - name: Setup Node.js
       uses: actions/setup-node@v4
       with:
-        node-version: '22.12.0'
-        
-    
-    - name: Install & Build Frontend  # ✅ FIXED
+        node-version: '22'
+
+    # 🔧 Build frontend
+    - name: Install & Build
       run: |
         cd Frontend
-        npm install                    # ✅ npm install (not npm ci)
-        echo 'VITE_API_URL=/api' > .env
+        npm ci
+        echo "VITE_API_URL=${{ secrets.VITE_API_URL }}" > .env
         npm run build
-    
-    - name: Deploy to EC2
-      uses: appleboy/scp-action@v0.1.4
-      with:
-        host: ${{ secrets.EC2_HOST }}
-        username: ${{ secrets.EC2_USER }}
-        key: ${{ secrets.EC2_SSH_KEY }}
-        source: "Frontend/dist/**/*"
-        target: "/var/www/resolvex/"
-        strip_components: 0
-        rm: true  # ✅ Clear old files
-    
-    - name: Fix Permissions
-      uses: appleboy/ssh-action@v1.0.3
-      with:
-        host: ${{ secrets.EC2_HOST }}
-        username: ${{ secrets.EC2_USER }}
-        key: ${{ secrets.EC2_SSH_KEY }}
-        script: |
+
+        echo "---- BUILD OUTPUT ----"
+        ls -la dist || exit 1
+
+    # 🔑 Write SSH key (same as backend)
+    - name: Write SSH Key
+      run: |
+        echo "${{ secrets.EC2_SSH_KEY }}" > key.pem
+        chmod 600 key.pem
+
+    # 🔍 Debug inputs (avoid silent failures)
+    - name: Debug Inputs
+      run: |
+        echo "USER: '${{ secrets.EC2_USER }}'"
+        echo "HOST: '${{ secrets.EC2_HOST }}'"
+
+    # 🔍 Test SSH
+    - name: Test SSH Connection
+      run: |
+        USER="${{ secrets.EC2_USER }}"
+        HOST="${{ secrets.EC2_HOST }}"
+
+        ssh -i key.pem -o StrictHostKeyChecking=no "$USER@$HOST" "echo SSH SUCCESS"
+
+    # 🚀 Upload files to temp directory
+    - name: Upload Frontend
+      run: |
+        USER="${{ secrets.EC2_USER }}"
+        HOST="${{ secrets.EC2_HOST }}"
+
+        echo "Uploading build files..."
+        scp -i key.pem -o StrictHostKeyChecking=no -r Frontend/dist/* "$USER@$HOST:/tmp/frontend"
+
+    # 🚀 Move files with proper permissions
+    - name: Deploy on Server
+      run: |
+        USER="${{ secrets.EC2_USER }}"
+        HOST="${{ secrets.EC2_HOST }}"
+
+        ssh -i key.pem -o StrictHostKeyChecking=no "$USER@$HOST" << 'EOF'
+
+          set -e
+
+          echo "Cleaning old files..."
+          sudo rm -rf /var/www/resolvex/*
+
+          echo "Moving new build..."
+          sudo mkdir -p /var/www/resolvex
+          sudo mv /tmp/frontend/* /var/www/resolvex/
+
+          echo "Fixing permissions..."
           sudo chown -R www-data:www-data /var/www/resolvex
+
+          echo "Reloading nginx..."
           sudo systemctl reload nginx
+
+          echo "Checking nginx response..."
           curl -I http://localhost/
+
+          echo "Frontend Deployment SUCCESS"
+
+        EOF
