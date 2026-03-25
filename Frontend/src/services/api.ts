@@ -1,6 +1,6 @@
 // src/services/api.ts
 
-const BASE_URL = import.meta.env.VITE_API_URL ?? "http://localhost:8000";
+const BASE_URL = import.meta.env.VITE_API_URL ?? "http://localhost:8000/api";
 
 // ── Types ──────────────────────────────────────────────────────────────────
 
@@ -133,7 +133,7 @@ export interface TicketPipelineTracker {
 }
 
 export async function getTicketPipeline(ticketId: number): Promise<TicketPipelineTracker> {
-  const res = await fetch(`${BASE_URL}/api/v1/tickets/${ticketId}/pipeline`);
+  const res = await fetch(`${BASE_URL}/v1/tickets/${ticketId}/pipeline`);
 
   if (!res.ok) {
     const error = await res.json().catch(() => ({ detail: "Unknown error" }));
@@ -233,7 +233,7 @@ export interface AnalyticsSummary {
 }
 
 export async function getAnalyticsSummary(): Promise<AnalyticsSummary> {
-  const res = await fetch(`${BASE_URL}/api/v1/analytics`);
+  const res = await fetch(`${BASE_URL}/v1/analytics`);
   if (!res.ok) {
     const error = await res.json().catch(() => ({ detail: "Unknown error" }));
     throw new Error(error.detail ?? `HTTP ${res.status}`);
@@ -242,7 +242,7 @@ export async function getAnalyticsSummary(): Promise<AnalyticsSummary> {
 }
 
 export async function getTicketStats(): Promise<TicketStats> {
-  const res = await fetch(`${BASE_URL}/api/v1/analytics/tickets`);
+  const res = await fetch(`${BASE_URL}/v1/analytics/tickets`);
   if (!res.ok) {
     const error = await res.json().catch(() => ({ detail: "Unknown error" }));
     throw new Error(error.detail ?? `HTTP ${res.status}`);
@@ -251,7 +251,7 @@ export async function getTicketStats(): Promise<TicketStats> {
 }
 
 export async function getConfidenceStats(): Promise<ConfidenceStats> {
-  const res = await fetch(`${BASE_URL}/api/v1/analytics/confidence`);
+  const res = await fetch(`${BASE_URL}/v1/analytics/confidence`);
   if (!res.ok) {
     const error = await res.json().catch(() => ({ detail: "Unknown error" }));
     throw new Error(error.detail ?? `HTTP ${res.status}`);
