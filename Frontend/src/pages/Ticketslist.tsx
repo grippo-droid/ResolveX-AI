@@ -271,7 +271,7 @@ function TicketDetailDrawer({
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
             {[
               { label: "Submitted By", value: ticket.submitted_by ?? "—" },
-              { label: "Assigned To",  value: ticket.assigned_to  ?? "Unassigned" },
+              { label: "Assigned To",  value: ticket.assigned_resolver_name || ticket.assigned_to || "Unassigned" },
               { label: "Category",     value: `${CATEGORY_ICONS[ticket.category ?? ""] ?? "📋"} ${CATEGORY_LABELS[ticket.category ?? ""] ?? ticket.category ?? "—"}` },
               { label: "Submitted",    value: ticket.created_at ? timeAgo(ticket.created_at) : "—" },
             ].map(item => (
@@ -957,7 +957,9 @@ export default function TicketsList() {
                   )}
 
                   {/* Assigned */}
-                  <span className="text-[11px] text-[#6B6B6B] truncate">{ticket.assigned_to ?? "—"}</span>
+                  <span className="text-[11px] text-[#6B6B6B] truncate">
+                    {ticket.assigned_resolver_name || ticket.assigned_to || "—"}
+                  </span>
 
                   {/* Time */}
                   <span className="text-[11px] text-[#ABABAB]">
