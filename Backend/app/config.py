@@ -1,7 +1,7 @@
 """
 config.py — Application configuration using Pydantic Settings.
 Reads settings from environment variables or .env file.
-For AWS RDS, populate the RDS_* variables; DATABASE_URL is built automatically.
+For AWS RDS, populate the RDS* variables; DATABASE_URL is built automatically.
 """
 
 from pydantic_settings import BaseSettings
