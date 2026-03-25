@@ -82,6 +82,9 @@ async def create_ticket(
         decision=decision,
         intent=resolution.category,        # category = intent in your schema
         processing_time=None,              # not in ResolutionResult, add later if needed
+        assigned_resolver_id=resolution.assigned_resolver_id,
+        assigned_resolver_name=resolution.assigned_resolver_name,
+        assigned_resolver_category=resolution.assigned_resolver_category,
     )   
 
 

@@ -32,6 +32,11 @@ export interface TicketAPIResponse {
   decision?: string;
   intent?: string;
   processing_time?: number;
+
+  // Expert Resolution fields
+  assigned_resolver_name?: string;
+  assigned_resolver_id?: string;
+  assigned_resolver_category?: string;
 }
 
 export interface TicketListAPIResponse {
