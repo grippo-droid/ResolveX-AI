@@ -2,6 +2,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { getTickets, type TicketAPIResponse } from "../services/api";
 import { formatAIText } from "../utils/formatAIText";
+import type { TicketHistoryEntry } from "./Simulation";
 
 // ── Types ──────────────────────────────────────────────────────────────────
 type Decision = "auto-resolved" | "human-review" | "escalated";
@@ -30,6 +31,8 @@ const CATEGORY_LABELS: Record<string, string> = {
   other:    "Other",
 };
 
+const HISTORY_KEY = "resolvex_ticket_history";
+
 // ── Helpers ────────────────────────────────────────────────────────────────
 function timeAgo(iso: string): string {
   const diff = Math.floor((Date.now() - new Date(iso).getTime()) / 1000);
@@ -47,26 +50,56 @@ function formatDate(iso: string): string {
 }
 
 function normalizeDecision(ticket: TicketAPIResponse): Decision {
-  if (ticket.decision === "auto-resolved") return "auto-resolved";
-  if (ticket.decision === "escalated")     return "escalated";
+  const val = (ticket.decision ?? ticket.status ?? "").toLowerCase().replace(/[-_]/g, "-");
+  if (val.includes("auto-resolved") || val.includes("autoresolved")) return "auto-resolved";
+  if (val.includes("escalated"))                                      return "escalated";
   return "human-review";
 }
 
 function getStatusColor(status: string): { color: string; bg: string } {
-  switch (status) {
-    case "open":        return { color: "#2563eb", bg: "#eff6ff" };
-    case "in-progress": return { color: "#b45309", bg: "#fffbeb" };
-    case "resolved":    return { color: "#15803d", bg: "#f0fdf4" };
-    case "closed":      return { color: "#6B6B6B", bg: "#F5F5F5" };
-    default:            return { color: "#6B6B6B", bg: "#F5F5F5" };
+  const s = (status ?? "").toLowerCase().replace("_", "-");
+  switch (s) {
+    case "open":          return { color: "#2563eb", bg: "#eff6ff" };
+    case "in-progress":   return { color: "#b45309", bg: "#fffbeb" };
+    case "resolved":      return { color: "#15803d", bg: "#f0fdf4" };
+    case "closed":        return { color: "#6B6B6B", bg: "#F5F5F5" };
+    case "auto-resolved": return { color: "#15803d", bg: "#f0fdf4" };
+    default:              return { color: "#6B6B6B", bg: "#F5F5F5" };
+  }
+}
+
+// ── Read pending keys from localStorage ───────────────────────────────────
+function readPendingKeys(): Set<string> {
+  try {
+    const stored: TicketHistoryEntry[] = JSON.parse(
+      localStorage.getItem(HISTORY_KEY) || "[]"
+    );
+    return new Set(
+      stored
+        .filter(e => e.pending === true)
+        .map(e => `${e.title.trim().toLowerCase()}||${e.user.trim().toLowerCase()}`)
+    );
+  } catch {
+    return new Set();
   }
 }
 
 // ── Detail Drawer ──────────────────────────────────────────────────────────
-function TicketDrawer({ ticket, onClose }: { ticket: TicketAPIResponse; onClose: () => void }) {
+function TicketDrawer({
+  ticket,
+  isPending,
+  onClose,
+}: {
+  ticket:    TicketAPIResponse;
+  isPending: boolean;
+  onClose:   () => void;
+}) {
   const decision    = normalizeDecision(ticket);
   const dec         = DECISION_META[decision];
   const statusStyle = getStatusColor(ticket.status ?? "open");
+
+  // When pending, use a neutral header background
+  const headerBg = isPending ? "#fafafa" : dec.bg;
 
   return (
     <div
@@ -82,30 +115,26 @@ function TicketDrawer({ ticket, onClose }: { ticket: TicketAPIResponse; onClose:
         {/* ── Header ── */}
         <div
           className="px-6 py-4 flex items-start justify-between border-b border-black/[0.07]"
-          style={{ background: dec.bg }}
+          style={{ background: headerBg }}
         >
           <div>
             <div className="flex items-center gap-2 mb-1.5 flex-wrap">
-              {/* Decision badge */}
-              <span
-                className="text-[11px] font-bold px-2.5 py-0.5 rounded-full border"
-                style={{ color: dec.color, borderColor: dec.border, background: "white" }}
-              >
-                {dec.label}
-              </span>
-              {/* Ticket ID */}
+              {/* Unified Status badge */}
+              {(() => {
+                let badge = { label: "In Progress", color: "#b45309", border: "#fde68a", bg: "white" };
+                if (decision === "auto-resolved" || ticket.status?.toLowerCase() === "closed" || ticket.status?.toLowerCase() === "resolved") badge = { label: "Closed", color: "#15803d", border: "#bbf7d0", bg: "white" };
+                else if (decision === "escalated") badge = { label: "Escalated", color: "#FF4D00", border: "#ffd0c0", bg: "white" };
+                
+                return (
+                  <span className="text-[11px] font-bold px-2.5 py-0.5 rounded-full border"
+                    style={{ color: badge.color, borderColor: badge.border, background: badge.bg }}>
+                    {badge.label}
+                  </span>
+                );
+              })()}
               <span className="text-[11px] font-mono text-[#6B6B6B]">
                 TKT-{String(ticket.id).padStart(5, "0")}
               </span>
-              {/* Status pill */}
-              {ticket.status && (
-                <span
-                  className="text-[11px] font-bold px-2.5 py-0.5 rounded-full"
-                  style={{ color: statusStyle.color, background: statusStyle.bg }}
-                >
-                  {ticket.status.charAt(0).toUpperCase() + ticket.status.slice(1)}
-                </span>
-              )}
             </div>
             <h3 className="text-[16px] font-extrabold text-[#0A0A0A] leading-snug max-w-[420px]">
               {ticket.title}
@@ -124,54 +153,91 @@ function TicketDrawer({ ticket, onClose }: { ticket: TicketAPIResponse; onClose:
         {/* ── Body ── */}
         <div className="p-6 flex flex-col gap-5 overflow-y-auto" style={{ maxHeight: "calc(90vh - 84px)" }}>
 
-          {/* ── AI Decision Banner — clean, no confidence score ── */}
-          <div
-            className="flex items-center gap-4 px-4 py-3.5 rounded-xl border"
-            style={{ background: dec.bg, borderColor: dec.border }}
-          >
-            {/* Decision icon */}
-            <div
-              className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0"
-              style={{ background: dec.color + "18", border: `1.5px solid ${dec.border}` }}
-            >
-              {decision === "auto-resolved" && (
-                <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-                  <circle cx="8" cy="8" r="6.5" stroke={dec.color} strokeWidth="1.4"/>
-                  <path d="M5 8l2 2 4-4" stroke={dec.color} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-                </svg>
-              )}
-              {decision === "human-review" && (
-                <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-                  <circle cx="8" cy="6" r="2.5" stroke={dec.color} strokeWidth="1.4"/>
-                  <path d="M3.5 13c0-2.5 2-4 4.5-4s4.5 1.5 4.5 4" stroke={dec.color} strokeWidth="1.4" strokeLinecap="round"/>
-                </svg>
-              )}
-              {decision === "escalated" && (
-                <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-                  <path d="M8 2v7M8 11v1.5" stroke={dec.color} strokeWidth="1.5" strokeLinecap="round"/>
-                  <path d="M3 13.5h10" stroke={dec.color} strokeWidth="1.4" strokeLinecap="round"/>
-                </svg>
-              )}
-            </div>
-            <div className="flex-1 min-w-0">
-              <p className="text-[10px] font-bold uppercase tracking-[1.2px] mb-0.5" style={{ color: dec.color }}>
-                AI Decision
-              </p>
-              <p className="text-[14px] font-extrabold text-[#0A0A0A]">{dec.label}</p>
-              {ticket.intent && (
-                <p className="text-[11px] text-[#6B6B6B] mt-0.5">
-                  Intent: <span className="font-semibold text-[#0A0A0A]">{ticket.intent}</span>
+          {/* ── PENDING: Processing banner replaces AI Decision banner ── */}
+          {isPending ? (
+            <div className="flex items-center gap-4 px-5 py-4 rounded-xl border border-[#fde68a] bg-[#fffbeb]">
+              {/* Animated spinner */}
+              <div className="relative w-10 h-10 shrink-0">
+                <div className="absolute inset-0 rounded-full border-[3px] border-[#fde68a]" />
+                <div
+                  className="absolute inset-0 rounded-full border-[3px] border-transparent"
+                  style={{ borderTopColor: "#b45309", animation: "spin 0.9s linear infinite" }}
+                />
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-[10px] font-bold uppercase tracking-[1.2px] text-[#b45309] mb-0.5">
+                  AI Processing
                 </p>
-              )}
+                <p className="text-[14px] font-extrabold text-[#0A0A0A]">
+                  Analysing your ticket…
+                </p>
+                <p className="text-[11px] text-[#6B6B6B] mt-0.5">
+                  The AI is reviewing this ticket. Decision will appear shortly.
+                </p>
+              </div>
+              {/* Pulsing dot */}
+              <span
+                className="w-2.5 h-2.5 rounded-full shrink-0"
+                style={{ background: "#b45309", animation: "pulse 1.4s ease-in-out infinite" }}
+              />
             </div>
-            {ticket.processing_time && (
-              <span className="text-[10px] font-medium text-[#ABABAB] shrink-0">
-                {ticket.processing_time}ms
-              </span>
-            )}
-          </div>
+          ) : (
+            /* ── RESOLVED: AI Decision Banner ── */
+            (() => {
+              let badge = { label: "In Progress", color: "#b45309", border: "#fde68a", bg: "#fffbeb" };
+              if (decision === "auto-resolved" || ticket.status?.toLowerCase() === "closed" || ticket.status?.toLowerCase() === "resolved") badge = { label: "Closed", color: "#15803d", border: "#bbf7d0", bg: "#f0fdf4" };
+              else if (decision === "escalated") badge = { label: "Escalated", color: "#FF4D00", border: "#ffd0c0", bg: "#fff7f5" };
 
-          {/* ── Meta Grid ── */}
+              return (
+                <div
+                  className="flex items-center gap-4 px-4 py-3.5 rounded-xl border"
+                  style={{ background: badge.bg, borderColor: badge.border }}
+                >
+                  <div
+                    className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0"
+                    style={{ background: badge.color + "18", border: `1.5px solid ${badge.border}` }}
+                  >
+                    {(decision === "auto-resolved" || badge.label === "Closed") && (
+                      <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+                        <circle cx="8" cy="8" r="6.5" stroke={badge.color} strokeWidth="1.4"/>
+                        <path d="M5 8l2 2 4-4" stroke={badge.color} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                      </svg>
+                    )}
+                    {badge.label === "In Progress" && (
+                      <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+                        <circle cx="8" cy="6" r="2.5" stroke={badge.color} strokeWidth="1.4"/>
+                        <path d="M3.5 13c0-2.5 2-4 4.5-4s4.5 1.5 4.5 4" stroke={badge.color} strokeWidth="1.4" strokeLinecap="round"/>
+                      </svg>
+                    )}
+                    {badge.label === "Escalated" && (
+                      <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+                        <path d="M8 2v7M8 11v1.5" stroke={badge.color} strokeWidth="1.5" strokeLinecap="round"/>
+                        <path d="M3 13.5h10" stroke={badge.color} strokeWidth="1.4" strokeLinecap="round"/>
+                      </svg>
+                    )}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-[10px] font-bold uppercase tracking-[1.2px] mb-0.5" style={{ color: badge.color }}>
+                      AI Decision
+                    </p>
+                    <p className="text-[14px] font-extrabold text-[#0A0A0A]">{badge.label}</p>
+                    {ticket.intent && (
+                      <p className="text-[11px] text-[#6B6B6B] mt-0.5">
+                        Intent: <span className="font-semibold text-[#0A0A0A]">{ticket.intent}</span>
+                      </p>
+                    )}
+                  </div>
+                  {ticket.processing_time && (
+                    <span className="text-[10px] font-medium text-[#ABABAB] shrink-0">
+                      {ticket.processing_time}ms
+                    </span>
+                  )}
+                </div>
+              );
+            })()
+          )}
+
+          {/* Meta Grid (always visible) */}
           <div className="grid grid-cols-3 gap-3">
             {[
               { label: "Submitted By", value: ticket.submitted_by || "—" },
@@ -185,7 +251,7 @@ function TicketDrawer({ ticket, onClose }: { ticket: TicketAPIResponse; onClose:
             ))}
           </div>
 
-          {/* ── Description ── */}
+          {/* Description (always visible) */}
           <div className="flex flex-col gap-1.5">
             <p className="text-[11px] font-bold uppercase tracking-[1.2px] text-[#6B6B6B]">Description</p>
             <div className="bg-[#F5F5F5] rounded-xl p-4">
@@ -193,8 +259,8 @@ function TicketDrawer({ ticket, onClose }: { ticket: TicketAPIResponse; onClose:
             </div>
           </div>
 
-          {/* ── AI Suggested Resolution ✅ formatAIText ── */}
-          {(ticket.suggested_fix || ticket.solution) && (
+          {/* AI Suggested Resolution (only when not pending) */}
+          {!isPending && (ticket.suggested_fix || ticket.solution) && (
             <div className="flex flex-col gap-1.5">
               <div className="flex items-center gap-2">
                 <div className="w-6 h-6 bg-[#0A0A0A] rounded-lg flex items-center justify-center shrink-0">
@@ -210,13 +276,12 @@ function TicketDrawer({ ticket, onClose }: { ticket: TicketAPIResponse; onClose:
                 </p>
               </div>
               <div className="bg-[#F5F5F5] rounded-xl p-4">
-                {/* ✅ Formatted AI text */}
                 {formatAIText(ticket.suggested_fix ?? ticket.solution ?? "")}
               </div>
             </div>
           )}
 
-          {/* ── Footer timestamp ── */}
+          {/* Footer timestamp (always visible) */}
           {ticket.created_at && (
             <p className="text-[11px] text-[#ABABAB] text-center">
               Submitted {formatDate(ticket.created_at)}
@@ -233,21 +298,32 @@ function TicketDrawer({ ticket, onClose }: { ticket: TicketAPIResponse; onClose:
 
 // ── Main ───────────────────────────────────────────────────────────────────
 export default function TicketHistory() {
-  const [tickets,  setTickets]  = useState<TicketAPIResponse[]>([]);
-  const [selected, setSelected] = useState<TicketAPIResponse | null>(null);
-  const [loading,  setLoading]  = useState(true);
-  const [error,    setError]    = useState<string | null>(null);
-  const [filter,   setFilter]   = useState<"all" | Decision>("all");
-  const [search,   setSearch]   = useState("");
-  const [page,     setPage]     = useState(1);
-  const [total,    setTotal]    = useState(0);
+  const [tickets,    setTickets]    = useState<TicketAPIResponse[]>([]);
+  const [pendingIds, setPendingIds] = useState<Set<string>>(new Set());
+  const [selected,   setSelected]  = useState<TicketAPIResponse | null>(null);
+  const [loading,    setLoading]   = useState(true);
+  const [error,      setError]     = useState<string | null>(null);
+  const [filter,     setFilter]    = useState<"all" | "in-progress" | "escalated" | "closed">("all");
+  const [search,     setSearch]    = useState("");
+  const [page,       setPage]      = useState(1);
+  const [total,      setTotal]     = useState(0);
   const PAGE_SIZE = 20;
+
+  // ── isPending ──────────────────────────────────────────────────────────
+  const isPending = useCallback((ticket: TicketAPIResponse): boolean => {
+    const backendDec = normalizeDecision(ticket);
+    if (backendDec !== "human-review") return false;
+    if (pendingIds.size === 0) return false;
+    const key = `${ticket.title.trim().toLowerCase()}||${(ticket.submitted_by ?? "").trim().toLowerCase()}`;
+    return pendingIds.has(key);
+  }, [pendingIds]);
 
   // ── Fetch ──────────────────────────────────────────────────────────────
   const fetchTickets = useCallback(async () => {
     try {
       setLoading(true);
       setError(null);
+      setPendingIds(readPendingKeys());
       const data = await getTickets(page, PAGE_SIZE);
       setTickets(data.tickets);
       setTotal(data.total);
@@ -260,10 +336,39 @@ export default function TicketHistory() {
 
   useEffect(() => { fetchTickets(); }, [fetchTickets]);
 
+  // ── Poll localStorage every 1.5s ──────────────────────────────────────
+  useEffect(() => {
+    const interval = setInterval(() => {
+      const newKeys = readPendingKeys();
+      setPendingIds(prev => {
+        const wasResolved = [...prev].some(key => !newKeys.has(key));
+        if (wasResolved) {
+          getTickets(page, PAGE_SIZE)
+            .then(data => {
+              setTickets(data.tickets);
+              setTotal(data.total);
+            })
+            .catch(() => {});
+        }
+        return newKeys;
+      });
+    }, 1500);
+    return () => clearInterval(interval);
+  }, [page]);
+
+  // ── Unified status lookup helper ───────────────────────────────────────
+  const getUnifiedStatusKey = useCallback((t: TicketAPIResponse) => {
+    if (isPending(t)) return "in-progress";
+    const dec = normalizeDecision(t);
+    if (dec === "auto-resolved" || t.status?.toLowerCase() === "closed" || t.status?.toLowerCase() === "resolved") return "closed";
+    if (dec === "escalated") return "escalated";
+    return "in-progress";
+  }, [isPending]);
+
   // ── Client-side filter + search ────────────────────────────────────────
   const filtered = tickets.filter(t => {
-    const decision    = normalizeDecision(t);
-    const matchFilter = filter === "all" || decision === filter;
+    const statusKey   = getUnifiedStatusKey(t);
+    const matchFilter = filter === "all" || statusKey === filter;
     const matchSearch =
       !search.trim() ||
       t.title.toLowerCase().includes(search.toLowerCase()) ||
@@ -273,10 +378,10 @@ export default function TicketHistory() {
   });
 
   const counts = {
-    all:             tickets.length,
-    "auto-resolved": tickets.filter(t => normalizeDecision(t) === "auto-resolved").length,
-    "human-review":  tickets.filter(t => normalizeDecision(t) === "human-review").length,
-    "escalated":     tickets.filter(t => normalizeDecision(t) === "escalated").length,
+    all:        tickets.length,
+    inProgress: tickets.filter(t => getUnifiedStatusKey(t) === "in-progress").length,
+    escalated:  tickets.filter(t => getUnifiedStatusKey(t) === "escalated").length,
+    closed:     tickets.filter(t => getUnifiedStatusKey(t) === "closed").length,
   };
 
   // ── Loading ────────────────────────────────────────────────────────────
@@ -317,16 +422,17 @@ export default function TicketHistory() {
       <style>{`
         @keyframes fadeUp  { from{ opacity:0; transform:translateY(12px); } to{ opacity:1; transform:translateY(0); } }
         @keyframes spin    { to{ transform: rotate(360deg); } }
-        .fade-up   { animation: fadeUp 0.4s ease both; }
+        @keyframes pulse   { 0%,100%{ opacity:1; } 50%{ opacity:0.35; } }
+        .fade-up         { animation: fadeUp 0.4s ease both; }
         .row-hover:hover { background: rgba(255,77,0,0.025); }
+        .pending-pulse   { animation: pulse 1.4s ease-in-out infinite; }
       `}</style>
 
       <div className="flex flex-col gap-5 fade-up">
 
-        {/* ── Header ── */}
+        {/* Header */}
         <div className="flex items-start justify-between flex-wrap gap-3">
           <div>
-            {/*  */}
             <p className="text-[13px] text-[#6B6B6B]">
               All tickets from database — {total} total
             </p>
@@ -342,17 +448,17 @@ export default function TicketHistory() {
           </button>
         </div>
 
-        {/* ── Stats Cards ── */}
+        {/* Stats Cards */}
         {tickets.length > 0 && (
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
             {[
-              { key: "all",           label: "Total",         color: "#0A0A0A", bg: "white"   },
-              { key: "auto-resolved", label: "Auto Resolved", color: "#15803d", bg: "#f0fdf4" },
-              { key: "human-review",  label: "Under Review",  color: "#b45309", bg: "#fffbeb" },
-              { key: "escalated",     label: "Escalated",     color: "#FF4D00", bg: "#fff7f5" },
+              { key: "all",          label: "Total",       color: "#0A0A0A", bg: "white",   count: counts.all        },
+              { key: "in-progress",  label: "In Progress", color: "#b45309", bg: "#fffbeb", count: counts.inProgress },
+              { key: "escalated",    label: "Escalated",   color: "#FF4D00", bg: "#fff7f5", count: counts.escalated  },
+              { key: "closed",       label: "Closed",      color: "#15803d", bg: "#f0fdf4", count: counts.closed     },
             ].map(s => (
               <button key={s.key}
-                onClick={() => setFilter(s.key as typeof filter)}
+                onClick={() => { setFilter(s.key as typeof filter); setPage(1); }}
                 className="flex flex-col gap-1 p-4 rounded-2xl border text-left cursor-pointer transition-all duration-150"
                 style={{
                   background:  filter === s.key ? s.bg    : "white",
@@ -360,7 +466,7 @@ export default function TicketHistory() {
                   boxShadow:   filter === s.key ? `0 0 0 1.5px ${s.color}33` : "none",
                 }}>
                 <span className="text-[26px] font-extrabold leading-none" style={{ color: s.color }}>
-                  {counts[s.key as keyof typeof counts]}
+                  {s.count}
                 </span>
                 <span className="text-[12px] font-semibold text-[#6B6B6B]">{s.label}</span>
               </button>
@@ -368,7 +474,7 @@ export default function TicketHistory() {
           </div>
         )}
 
-        {/* ── Search ── */}
+        {/* Search */}
         {tickets.length > 0 && (
           <div className="flex items-center gap-3">
             <div className="relative flex-1">
@@ -378,12 +484,12 @@ export default function TicketHistory() {
                 <path d="M10.5 10.5l3 3" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"/>
               </svg>
               <input type="text" placeholder="Search by title, name or ticket ID…"
-                value={search} onChange={e => setSearch(e.target.value)}
+                value={search} onChange={e => { setSearch(e.target.value); setPage(1); }}
                 className="w-full bg-white border border-black/[0.1] rounded-xl pl-10 pr-4 py-2.5 text-[13px] text-[#0A0A0A] outline-none focus:border-[#FF4D00] transition-all placeholder:text-[#ABABAB]"
               />
             </div>
             {(search || filter !== "all") && (
-              <button onClick={() => { setSearch(""); setFilter("all"); }}
+              <button onClick={() => { setSearch(""); setFilter("all"); setPage(1); }}
                 className="text-[12px] font-semibold text-[#6B6B6B] hover:text-[#FF4D00] bg-white border border-black/10 px-3 py-2.5 rounded-xl cursor-pointer transition-all">
                 Clear
               </button>
@@ -391,7 +497,7 @@ export default function TicketHistory() {
           </div>
         )}
 
-        {/* ── Empty State ── */}
+        {/* Empty State */}
         {tickets.length === 0 && (
           <div className="flex flex-col items-center justify-center py-20 gap-4">
             <div className="w-16 h-16 rounded-2xl bg-white border border-black/10 flex items-center justify-center">
@@ -409,24 +515,24 @@ export default function TicketHistory() {
           </div>
         )}
 
-        {/* ── No Results ── */}
+        {/* No Results */}
         {tickets.length > 0 && filtered.length === 0 && (
           <div className="flex flex-col items-center justify-center py-16 gap-3">
             <p className="text-[14px] font-semibold text-[#6B6B6B]">No tickets match your search.</p>
-            <button onClick={() => { setSearch(""); setFilter("all"); }}
+            <button onClick={() => { setSearch(""); setFilter("all"); setPage(1); }}
               className="text-[12px] font-semibold text-[#FF4D00] cursor-pointer bg-transparent border-none">
               Clear filters
             </button>
           </div>
         )}
 
-        {/* ── Ticket List ── */}
+        {/* Ticket Table */}
         {filtered.length > 0 && (
           <div className="bg-white rounded-2xl border border-black/[0.08] overflow-hidden">
 
-            {/* Table header */}
+            {/* Table header — "Decision" renamed to "Status" */}
             <div className="grid grid-cols-[1fr_140px_130px_80px_28px] gap-4 px-5 py-3 border-b border-black/[0.06] bg-[#F9F9F9]">
-              {["Ticket", "Category", "Decision", "Time", ""].map(h => (
+              {["Ticket", "Category", "Status", "Time", ""].map(h => (
                 <span key={h} className="text-[10px] font-bold uppercase tracking-[1.2px] text-[#ABABAB]">{h}</span>
               ))}
             </div>
@@ -435,6 +541,8 @@ export default function TicketHistory() {
             {filtered.map((ticket, i) => {
               const decision = normalizeDecision(ticket);
               const dec      = DECISION_META[decision];
+              const pending  = isPending(ticket);
+
               return (
                 <div key={ticket.id}
                   onClick={() => setSelected(ticket)}
@@ -459,13 +567,35 @@ export default function TicketHistory() {
                     {CATEGORY_ICONS[ticket.category ?? ""] ?? "📋"} {CATEGORY_LABELS[ticket.category ?? ""] ?? ticket.category ?? "—"}
                   </span>
 
-                  {/* Decision */}
-                  <div className="flex items-center gap-1.5">
-                    <span className="w-1.5 h-1.5 rounded-full shrink-0" style={{ background: dec.dot }} />
-                    <span className="text-[11px] font-semibold truncate" style={{ color: dec.color }}>
-                      {dec.label}
-                    </span>
-                  </div>
+                  {/* Status — unified visual */}
+                  {(() => {
+                    const statusKey = pending ? "in-progress" : 
+                      (decision === "auto-resolved" || ticket.status?.toLowerCase() === "closed" || ticket.status?.toLowerCase() === "resolved") ? "closed" : 
+                      (decision === "escalated" ? "escalated" : "in-progress");
+                      
+                    if (statusKey === "in-progress") {
+                      return (
+                        <div className="flex items-center gap-1.5">
+                          <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${pending ? 'pending-pulse' : ''}`} style={{ background: "#b45309" }} />
+                          <span className="text-[11px] font-semibold truncate" style={{ color: "#b45309" }}>
+                            In Progress
+                          </span>
+                        </div>
+                      );
+                    }
+                    if (statusKey === "escalated") {
+                      return (
+                        <span className="text-[11px] font-bold px-2.5 py-1 rounded-full w-fit" style={{ color: "#FF4D00", background: "#fff7f5" }}>
+                          Escalated
+                        </span>
+                      );
+                    }
+                    return (
+                      <span className="text-[11px] font-bold px-2.5 py-1 rounded-full w-fit" style={{ color: "#15803d", background: "#f0fdf4" }}>
+                        Closed
+                      </span>
+                    );
+                  })()}
 
                   {/* Time */}
                   <span className="text-[11px] text-[#ABABAB]">
@@ -485,7 +615,7 @@ export default function TicketHistory() {
           </div>
         )}
 
-        {/* ── Pagination ── */}
+        {/* Pagination */}
         {total > PAGE_SIZE && (
           <div className="flex items-center justify-center gap-3 pt-2">
             <button disabled={page === 1} onClick={() => setPage(p => p - 1)}
@@ -504,8 +634,14 @@ export default function TicketHistory() {
 
       </div>
 
-      {/* ── Detail Drawer ── */}
-      {selected && <TicketDrawer ticket={selected} onClose={() => setSelected(null)} />}
+      {/* Detail Drawer */}
+      {selected && (
+        <TicketDrawer
+          ticket={selected}
+          isPending={isPending(selected)}
+          onClose={() => setSelected(null)}
+        />
+      )}
     </>
   );
 }

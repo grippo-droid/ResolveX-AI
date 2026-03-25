@@ -40,32 +40,10 @@ export interface TicketHistoryEntry {
   processingTime: number;
   hasImage:       boolean;
   submittedAt:    string;
+  pending?:       boolean; // ← true while backend is still processing
 }
 
 const HISTORY_KEY = "resolvex_ticket_history";
-
-function saveTicketToHistory(form: TicketForm, result: AIResult) {
-  const existing: TicketHistoryEntry[] = JSON.parse(localStorage.getItem(HISTORY_KEY) || "[]");
-  const entry: TicketHistoryEntry = {
-    ticketId:       result.ticketId,
-    title:          form.title,
-    category:       form.category,
-    priority:       "medium",
-    user:           form.user,
-    department:     "",
-    system:         "",
-    description:    form.description,
-    decision:       result.decision,
-    confidence:     result.confidence,
-    intent:         result.intent,
-    suggestedFix:   result.suggestedFix,
-    explanation:    result.explanation,
-    processingTime: result.processingTime,
-    hasImage:       !!form.image,
-    submittedAt:    new Date().toISOString(),
-  };
-  localStorage.setItem(HISTORY_KEY, JSON.stringify([entry, ...existing]));
-}
 
 // ── Constants ──────────────────────────────────────────────────────────────
 const CATEGORIES: { value: Category; label: string; icon: string }[] = [
@@ -126,13 +104,52 @@ export default function Simulation() {
     return Object.keys(e).length === 0;
   };
 
-  // ── Real API Call ──────────────────────────────────────────────────────
+  // ── Submit with optimistic UI ──────────────────────────────────────────
   const handleSubmit = async () => {
     if (!validate()) return;
     setSubmitError(null);
-    try {
-      setPhase("processing");
 
+    // ── Task 1 & 2: Save optimistic entry instantly with pending flag ──
+    const optimisticId = `TKT-${Date.now().toString().slice(-5)}`;
+    const optimisticEntry: TicketHistoryEntry = {
+      ticketId:       optimisticId,
+      title:          form.title,
+      category:       form.category,
+      priority:       "medium",
+      user:           form.user,
+      department:     "",
+      system:         "",
+      description:    form.description,
+      decision:       "human-review", // placeholder "Under Review" until backend responds
+      confidence:     0,
+      intent:         "Processing…",
+      suggestedFix:   "",
+      explanation:    "",
+      processingTime: 0,
+      hasImage:       !!form.image,
+      submittedAt:    new Date().toISOString(),
+      pending:        true,           // marks this as not yet confirmed by backend
+    };
+
+    const existing: TicketHistoryEntry[] = JSON.parse(
+      localStorage.getItem(HISTORY_KEY) || "[]"
+    );
+    localStorage.setItem(HISTORY_KEY, JSON.stringify([optimisticEntry, ...existing]));
+
+    // ── Task 1: Show thankyou screen immediately ──
+    setResult({
+      decision:       "human-review",
+      confidence:     0,
+      intent:         "Processing…",
+      suggestedFix:   "",
+      explanation:    "",
+      ticketId:       optimisticId,
+      processingTime: 0,
+    });
+    setPhase("thankyou");
+
+    // ── Task 3: Backend runs in background, patches history when done ──
+    try {
       const data = await submitTicket({
         title:        form.title,
         description:  form.description,
@@ -143,26 +160,54 @@ export default function Simulation() {
 
       console.log("✅ Ticket created:", data);
 
-      // Map backend response → AIResult
-      const aiResult: AIResult = {
+      const realResult: AIResult = {
         decision:       (data.decision as Decision)  ?? "human-review",
         confidence:     data.confidence               ?? 70,
         intent:         data.intent                   ?? "General IT Issue",
         suggestedFix:   data.suggested_fix            ?? "Our team will investigate.",
         explanation:    data.explanation              ?? "",
-        ticketId:       data.ticket_id ?? String(data.id) ?? `TKT-${Date.now().toString().slice(-5)}`,
+        ticketId:       data.ticket_id ?? String(data.id) ?? optimisticId,
         processingTime: data.processing_time          ?? 2000,
       };
 
-      saveTicketToHistory(form, aiResult);
-      setResult(aiResult);
-      setPhase("thankyou");
+      // ── Task 3: Patch the optimistic entry with real backend result ──
+      const current: TicketHistoryEntry[] = JSON.parse(
+        localStorage.getItem(HISTORY_KEY) || "[]"
+      );
+      const patched = current.map(entry =>
+        entry.ticketId === optimisticId
+          ? {
+              ...entry,
+              ticketId:       realResult.ticketId,
+              decision:       realResult.decision,
+              confidence:     realResult.confidence,
+              intent:         realResult.intent,
+              suggestedFix:   realResult.suggestedFix,
+              explanation:    realResult.explanation,
+              processingTime: realResult.processingTime,
+              pending:        false, // mark as final
+            }
+          : entry
+      );
+      localStorage.setItem(HISTORY_KEY, JSON.stringify(patched));
+
+      // ── Task 3: Update the thankyou screen result live ──
+      setResult(realResult);
 
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : "Something went wrong";
       console.error("❌ Ticket submission failed:", message);
-      setSubmitError(message);
-      setPhase("form");
+
+      // Mark entry as failed in localStorage but keep thankyou screen visible
+      const current: TicketHistoryEntry[] = JSON.parse(
+        localStorage.getItem(HISTORY_KEY) || "[]"
+      );
+      const patched = current.map(entry =>
+        entry.ticketId === optimisticId
+          ? { ...entry, pending: false, intent: "Submission failed" }
+          : entry
+      );
+      localStorage.setItem(HISTORY_KEY, JSON.stringify(patched));
     }
   };
 
@@ -237,12 +282,7 @@ export default function Simulation() {
 
           {/* LEFT: Theory panel */}
           <div className="lg:w-[260px] shrink-0 flex flex-col gap-4">
-            <div className="flex items-center gap-2.5 bg-[#FF4D00]/[0.07] border border-[#FF4D00]/20 rounded-xl px-4 py-3">
-              <span className="pulse-dot w-1.5 h-1.5 rounded-full bg-[#FF4D00] shrink-0" />
-              <span className="text-[12px] font-medium text-[#FF4D00] leading-snug">
-                Live mode — connected to real backend
-              </span>
-            </div>
+        
 
             <div className="bg-white rounded-2xl border border-black/10 p-5 flex flex-col gap-4">
               <p className="text-[13px] font-bold text-[#0A0A0A]">What happens when you submit?</p>
@@ -415,7 +455,7 @@ export default function Simulation() {
         </div>
       )}
 
-      {/* ══ PHASE: PROCESSING ══ */}
+      {/* ══ PHASE: PROCESSING — kept for safety but no longer triggered ══ */}
       {phase === "processing" && (
         <div className="fade-in flex flex-col items-center justify-center min-h-[60vh] text-center gap-6">
           <div className="relative">
@@ -458,7 +498,7 @@ export default function Simulation() {
                   Ticket Submitted!
                 </h2>
                 <p className="text-[14px] text-[#6B6B6B] leading-relaxed max-w-[380px] mx-auto">
-                  Thank you, <strong className="text-[#0A0A0A]">{form.user}</strong>. Your ticket has been saved to the database. Track it in Ticket History.
+                  Thank you, <strong className="text-[#0A0A0A]">{form.user}</strong>. Your ticket has been saved. Track it in Ticket History.
                 </p>
               </div>
 
@@ -466,8 +506,19 @@ export default function Simulation() {
                 <div className="px-5 py-3.5 flex items-center justify-between"
                   style={{ background: meta.bg, borderBottom: `1px solid ${meta.border}` }}>
                   <div className="flex items-center gap-2">
-                    <div className="w-2 h-2 rounded-full" style={{ background: meta.color }} />
-                    <span className="text-[13px] font-bold" style={{ color: meta.color }}>{meta.label}</span>
+                    {/* ── pulse dot while pending, solid when result is real ── */}
+                    <div
+                      className="w-2 h-2 rounded-full"
+                      style={{
+                        background: meta.color,
+                        animation: result.intent === "Processing…"
+                          ? "pulse 1.4s ease-in-out infinite"
+                          : "none",
+                      }}
+                    />
+                    <span className="text-[13px] font-bold" style={{ color: meta.color }}>
+                      {result.intent === "Processing…" ? "Under Review…" : meta.label}
+                    </span>
                   </div>
                   <span className="text-[12px] font-mono font-semibold text-[#6B6B6B]">{result.ticketId}</span>
                 </div>
@@ -493,10 +544,16 @@ export default function Simulation() {
                     <div>
                       <p className="text-[10px] font-bold uppercase tracking-[1.2px] text-[#ABABAB] mb-0.5">AI Confidence</p>
                       <div className="flex items-center gap-2">
-                        <span className="text-[13px] font-bold" style={{ color: meta.color }}>{result.confidence}%</span>
-                        <div className="flex-1 h-1 rounded-full bg-black/[0.08] overflow-hidden">
-                          <div className="h-full rounded-full" style={{ width: `${result.confidence}%`, background: meta.color }} />
-                        </div>
+                        {result.intent === "Processing…" ? (
+                          <span className="text-[13px] font-bold text-[#ABABAB]">Analyzing…</span>
+                        ) : (
+                          <>
+                            <span className="text-[13px] font-bold" style={{ color: meta.color }}>{result.confidence}%</span>
+                            <div className="flex-1 h-1 rounded-full bg-black/[0.08] overflow-hidden">
+                              <div className="h-full rounded-full" style={{ width: `${result.confidence}%`, background: meta.color }} />
+                            </div>
+                          </>
+                        )}
                       </div>
                     </div>
                     <div>
@@ -511,7 +568,9 @@ export default function Simulation() {
                       <path d="M7.5 5v3.5M7.5 10.5v.5" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round"/>
                     </svg>
                     <p className="text-[12px] text-[#6B6B6B] leading-relaxed">
-                      {result.decision === "auto-resolved"
+                      {result.intent === "Processing…"
+                        ? "AI is analyzing your ticket in the background. The decision will update shortly."
+                        : result.decision === "auto-resolved"
                         ? "This ticket was auto-resolved by the AI. Check your email for confirmation."
                         : result.decision === "human-review"
                         ? "A support engineer will review and respond within 1 business day."

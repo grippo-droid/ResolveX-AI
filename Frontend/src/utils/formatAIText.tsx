@@ -1,134 +1,71 @@
 // src/utils/formatAIText.tsx
 import React from "react";
+import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
+import remarkBreaks from "remark-breaks";
 
 /**
- * Parses AI-generated text with **bold**, numbered lists,
- * bullet points and paragraphs into formatted React elements.
+ * Parses AI-generated markdown text into beautifully formatted React elements.
+ * Replaces manual AST parsing with robust react-markdown.
  */
 export function formatAIText(text: string): React.ReactNode {
   if (!text?.trim()) return null;
 
-  // ── Split into blocks by double newline or bold headings ──────────────
-  const lines = text
-    .replace(/\*\*([^*]+)\*\*/g, "\n**$1**\n") // ensure headings get their own line
-    .split("\n")
-    .map(l => l.trim())
-    .filter(Boolean);
-
-  const elements: React.ReactNode[] = [];
-  let numberedItems: string[] = [];
-  let bulletItems:   string[] = [];
-  let key = 0;
-
-  const flushNumbered = () => {
-    if (numberedItems.length === 0) return;
-    elements.push(
-      <ol key={key++} className="flex flex-col gap-2 my-2 pl-1">
-        {numberedItems.map((item, i) => (
-          <li key={i} className="flex items-start gap-3">
-            <span
-              className="shrink-0 w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-extrabold mt-0.5"
-              style={{ background: "#FF4D00", color: "white", minWidth: 20 }}
-            >
-              {i + 1}
-            </span>
-            <span className="text-[13px] text-[#3a3a3a] leading-relaxed">
-              {renderInline(item)}
-            </span>
-          </li>
-        ))}
-      </ol>
-    );
-    numberedItems = [];
-  };
-
-  const flushBullets = () => {
-    if (bulletItems.length === 0) return;
-    elements.push(
-      <ul key={key++} className="flex flex-col gap-1.5 my-2 pl-1">
-        {bulletItems.map((item, i) => (
-          <li key={i} className="flex items-start gap-2.5">
-            <span
-              className="shrink-0 w-1.5 h-1.5 rounded-full mt-2"
-              style={{ background: "#FF4D00", minWidth: 6 }}
-            />
-            <span className="text-[13px] text-[#3a3a3a] leading-relaxed">
-              {renderInline(item)}
-            </span>
-          </li>
-        ))}
-      </ul>
-    );
-    bulletItems = [];
-  };
-
-  for (const line of lines) {
-    // ── Numbered list: "1. text" or "1) text" ──
-    const numberedMatch = line.match(/^\d+[.)]\s+(.+)/);
-    if (numberedMatch) {
-      flushBullets();
-      numberedItems.push(numberedMatch[1]);
-      continue;
-    }
-
-    // ── Bullet list: "- text" or "* text" or "• text" ──
-    const bulletMatch = line.match(/^[-*•]\s+(.+)/);
-    if (bulletMatch) {
-      flushNumbered();
-      bulletItems.push(bulletMatch[1]);
-      continue;
-    }
-
-    // ── Bold heading: **Text** on its own line ──
-    const headingMatch = line.match(/^\*\*([^*]+)\*\*:?$/);
-    if (headingMatch) {
-      flushNumbered();
-      flushBullets();
-      elements.push(
-        <p key={key++} className="text-[13px] font-extrabold text-[#0A0A0A] mt-3 mb-0.5 tracking-tight">
-          {headingMatch[1].replace(/:$/, "")}
-        </p>
-      );
-      continue;
-    }
-
-    // ── Regular paragraph ──
-    flushNumbered();
-    flushBullets();
-    elements.push(
-      <p key={key++} className="text-[13px] text-[#3a3a3a] leading-relaxed">
-        {renderInline(line)}
-      </p>
-    );
-  }
-
-  // flush any remaining lists
-  flushNumbered();
-  flushBullets();
-
-  return <div className="flex flex-col gap-1">{elements}</div>;
-}
-
-/**
- * Renders inline **bold** and `code` within a line of text.
- */
-function renderInline(text: string): React.ReactNode {
-  const parts = text.split(/(\*\*[^*]+\*\*|`[^`]+`)/g);
-  return parts.map((part, i) => {
-    if (part.startsWith("**") && part.endsWith("**")) {
-      return (
-        <strong key={i} className="font-bold text-[#0A0A0A]">
-          {part.slice(2, -2)}
-        </strong>
-      );
-    }
-    if (part.startsWith("`") && part.endsWith("`")) {
-      return (
-        <code key={i} className="bg-black/[0.07] text-[#FF4D00] text-[11px] font-mono px-1.5 py-0.5 rounded-md">
-          {part.slice(1, -1)}
-        </code>
-      );
-    }
-    return part;
-  });
+  return (
+    <div className="flex flex-col gap-1 text-[13px] text-[#3a3a3a] leading-relaxed w-full">
+      <ReactMarkdown
+        remarkPlugins={[remarkGfm, remarkBreaks]}
+        components={{
+          h1: ({ node, ...props }) => <h1 className="text-[17px] font-extrabold text-[#0A0A0A] mt-5 mb-2.5 tracking-tight border-b border-black/5 pb-1" {...props} />,
+          h2: ({ node, ...props }) => <h2 className="text-[15px] font-extrabold text-[#0A0A0A] mt-4 mb-2 tracking-tight" {...props} />,
+          h3: ({ node, ...props }) => <h3 className="text-[14px] font-extrabold text-[#0A0A0A] mt-3 mb-1.5 tracking-tight" {...props} />,
+          h4: ({ node, ...props }) => <h4 className="text-[13px] font-bold text-[#0A0A0A] mt-2 mb-1" {...props} />,
+          p: ({ node, ...props }) => <p className="my-1.5 leading-relaxed" {...props} />,
+          ul: ({ node, ...props }) => <ul className="flex flex-col gap-1.5 my-2.5 pl-5 list-disc marker:text-[#FF4D00]" {...props} />,
+          ol: ({ node, ...props }) => <ol className="flex flex-col gap-1.5 my-2.5 pl-5 list-decimal marker:font-bold marker:text-[#FF4D00]" {...props} />,
+          li: ({ node, ...props }) => <li className="pl-1" {...props} />,
+          strong: ({ node, ...props }) => <strong className="font-bold text-[#0A0A0A]" {...props} />,
+          em: ({ node, ...props }) => <em className="text-[#555] italic" {...props} />,
+          a: ({ node, ...props }) => (
+            <a className="text-[#FF4D00] font-medium hover:underline underline-offset-2 transition-all" target="_blank" rel="noopener noreferrer" {...props} />
+          ),
+          blockquote: ({ node, ...props }) => (
+            <blockquote className="border-l-[3px] border-[#FF4D00] pl-3.5 py-1.5 my-3 bg-[#FF4D00]/[0.03] text-[#555] max-w-full rounded-r-xl italic" {...props} />
+          ),
+          code: ({ node, inline, className, children, ...props }: any) => {
+            const match = /language-(\w+)/.exec(className || "");
+            return !inline ? (
+              <div className="my-3 overflow-hidden rounded-xl border border-black/[0.08] shadow-sm">
+                {match && match[1] && (
+                  <div className="bg-[#f0f0f0] px-3 py-1.5 flex items-center text-[10px] font-bold text-[#6B6B6B] uppercase tracking-wider border-b border-black/[0.05]">
+                    {match[1]}
+                  </div>
+                )}
+                <pre className="bg-[#1C1C1C] text-[#E0E0E0] p-4 overflow-x-auto text-[12px] font-mono leading-relaxed">
+                  <code className={className} {...props}>
+                    {children}
+                  </code>
+                </pre>
+              </div>
+            ) : (
+              <code className="bg-black/[0.05] text-[#FF4D00] text-[11.5px] font-mono px-1.5 py-0.5 rounded-md border border-black/[0.03]" {...props}>
+                {children}
+              </code>
+            );
+          },
+          table: ({ node, ...props }) => (
+            <div className="overflow-x-auto my-4 rounded-xl border border-black/10">
+              <table className="w-full text-left border-collapse text-[12.5px]" {...props} />
+            </div>
+          ),
+          thead: ({ node, ...props }) => <thead className="bg-[#F5F5F5] border-b border-black/10" {...props} />,
+          th: ({ node, ...props }) => <th className="py-2.5 px-4 font-bold text-[#0A0A0A] whitespace-nowrap" {...props} />,
+          td: ({ node, ...props }) => <td className="py-2.5 px-4 border-b border-black/5 last:border-0" {...props} />,
+          hr: ({ node, ...props }) => <hr className="my-4 border-black/10" {...props} />
+        }}
+      >
+        {text}
+      </ReactMarkdown>
+    </div>
+  );
 }

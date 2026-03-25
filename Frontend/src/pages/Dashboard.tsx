@@ -11,9 +11,7 @@ import { getTickets }                  from "../services/api";
 const PAGE_LABELS: Record<string, string> = {
   overview:      "Overview",
   tickets:       "Tickets",
-  decisions:     "AI Decisions",
   audit:         "Audit Logs",
-  feedback:      "Feedback",
   simulation:    "Simulation",
   tickethistory: "Ticket History",
 };
@@ -32,7 +30,6 @@ export default function Dashboard() {
 
   // ── Live badge counts ──────────────────────────────────────────────────
   const [ticketCount,   setTicketCount]   = useState<number>(0);
-  const [decisionCount, setDecisionCount] = useState<number>(3); // static for now
 
   useEffect(() => {
     // Fetch real ticket count from DB
@@ -64,7 +61,7 @@ export default function Dashboard() {
         onToggle={handleToggle}
         activeId={activeId}
         onActiveChange={setActiveId}
-        badgeCounts={{ tickets: ticketCount, decisions: decisionCount }}  // ✅ pass live counts
+        badgeCounts={{ tickets: ticketCount }}  // ✅ pass live counts
       />
       <div className="flex flex-col flex-1 min-w-0 overflow-hidden bg-[#E9E9E9]">
         <Navbar
