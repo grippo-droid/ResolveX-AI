@@ -24,10 +24,12 @@ jobs:
 
           echo "Pulling latest code..."
           cd ~/ResolveX-AI
-          git pull origin main
+          
 
           echo "Building frontend..."
           cd Frontend
+          git fetch origin
+          git reset --hard origin/main
           npm install
           npm run build
 
