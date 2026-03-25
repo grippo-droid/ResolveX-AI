@@ -2,6 +2,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { getTickets, type TicketAPIResponse } from "../services/api";
 import { formatAIText } from "../utils/formatAIText";
+import type { TicketHistoryEntry } from "./Simulation";
 
 // ── Types ──────────────────────────────────────────────────────────────────
 type Decision = "auto-resolved" | "human-review" | "escalated";
@@ -29,6 +30,8 @@ const CATEGORY_LABELS: Record<string, string> = {
   security: "Security",
   other:    "Other",
 };
+
+const HISTORY_KEY = "resolvex_ticket_history";
 
 // ── Helpers ────────────────────────────────────────────────────────────────
 function timeAgo(iso: string): string {
@@ -86,18 +89,15 @@ function TicketDrawer({ ticket, onClose }: { ticket: TicketAPIResponse; onClose:
         >
           <div>
             <div className="flex items-center gap-2 mb-1.5 flex-wrap">
-              {/* Decision badge */}
               <span
                 className="text-[11px] font-bold px-2.5 py-0.5 rounded-full border"
                 style={{ color: dec.color, borderColor: dec.border, background: "white" }}
               >
                 {dec.label}
               </span>
-              {/* Ticket ID */}
               <span className="text-[11px] font-mono text-[#6B6B6B]">
                 TKT-{String(ticket.id).padStart(5, "0")}
               </span>
-              {/* Status pill */}
               {ticket.status && (
                 <span
                   className="text-[11px] font-bold px-2.5 py-0.5 rounded-full"
@@ -124,12 +124,11 @@ function TicketDrawer({ ticket, onClose }: { ticket: TicketAPIResponse; onClose:
         {/* ── Body ── */}
         <div className="p-6 flex flex-col gap-5 overflow-y-auto" style={{ maxHeight: "calc(90vh - 84px)" }}>
 
-          {/* ── AI Decision Banner — clean, no confidence score ── */}
+          {/* ── AI Decision Banner ── */}
           <div
             className="flex items-center gap-4 px-4 py-3.5 rounded-xl border"
             style={{ background: dec.bg, borderColor: dec.border }}
           >
-            {/* Decision icon */}
             <div
               className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0"
               style={{ background: dec.color + "18", border: `1.5px solid ${dec.border}` }}
@@ -193,7 +192,7 @@ function TicketDrawer({ ticket, onClose }: { ticket: TicketAPIResponse; onClose:
             </div>
           </div>
 
-          {/* ── AI Suggested Resolution ✅ formatAIText ── */}
+          {/* ── AI Suggested Resolution ── */}
           {(ticket.suggested_fix || ticket.solution) && (
             <div className="flex flex-col gap-1.5">
               <div className="flex items-center gap-2">
@@ -210,7 +209,6 @@ function TicketDrawer({ ticket, onClose }: { ticket: TicketAPIResponse; onClose:
                 </p>
               </div>
               <div className="bg-[#F5F5F5] rounded-xl p-4">
-                {/* ✅ Formatted AI text */}
                 {formatAIText(ticket.suggested_fix ?? ticket.solution ?? "")}
               </div>
             </div>
@@ -233,21 +231,37 @@ function TicketDrawer({ ticket, onClose }: { ticket: TicketAPIResponse; onClose:
 
 // ── Main ───────────────────────────────────────────────────────────────────
 export default function TicketHistory() {
-  const [tickets,  setTickets]  = useState<TicketAPIResponse[]>([]);
-  const [selected, setSelected] = useState<TicketAPIResponse | null>(null);
-  const [loading,  setLoading]  = useState(true);
-  const [error,    setError]    = useState<string | null>(null);
-  const [filter,   setFilter]   = useState<"all" | Decision>("all");
-  const [search,   setSearch]   = useState("");
-  const [page,     setPage]     = useState(1);
-  const [total,    setTotal]    = useState(0);
+  const [tickets,    setTickets]    = useState<TicketAPIResponse[]>([]);
+  const [pendingIds, setPendingIds] = useState<Set<string>>(new Set());
+  const [selected,   setSelected]  = useState<TicketAPIResponse | null>(null);
+  const [loading,    setLoading]   = useState(true);
+  const [error,      setError]     = useState<string | null>(null);
+  const [filter,     setFilter]    = useState<"all" | Decision>("all");
+  const [search,     setSearch]    = useState("");
+  const [page,       setPage]      = useState(1);
+  const [total,      setTotal]     = useState(0);
   const PAGE_SIZE = 20;
 
-  // ── Fetch ──────────────────────────────────────────────────────────────
+  // ── Read pending keys from localStorage ───────────────────────────────
+  // Key = "<title>||<user>" for matching against backend ticket fields.
+  // Only entries with pending: true are tracked here.
+  const readPendingKeys = (): Set<string> => {
+    const stored: TicketHistoryEntry[] = JSON.parse(
+      localStorage.getItem(HISTORY_KEY) || "[]"
+    );
+    return new Set(
+      stored
+        .filter(e => e.pending === true)
+        .map(e => `${e.title.trim().toLowerCase()}||${e.user.trim().toLowerCase()}`)
+    );
+  };
+
+  // ── Fetch from backend ─────────────────────────────────────────────────
   const fetchTickets = useCallback(async () => {
     try {
       setLoading(true);
       setError(null);
+      setPendingIds(readPendingKeys());
       const data = await getTickets(page, PAGE_SIZE);
       setTickets(data.tickets);
       setTotal(data.total);
@@ -259,6 +273,46 @@ export default function TicketHistory() {
   }, [page]);
 
   useEffect(() => { fetchTickets(); }, [fetchTickets]);
+
+  // ── Poll localStorage every 1.5s ──────────────────────────────────────
+  // When Simulation.tsx patches an entry to pending:false,
+  // the key disappears from pendingKeys → we re-fetch backend
+  // so the real decision replaces the placeholder immediately.
+  useEffect(() => {
+    const interval = setInterval(() => {
+      const newKeys = readPendingKeys();
+
+      setPendingIds(prev => {
+        // Check if any previously pending ticket just got resolved
+        const wasResolved = [...prev].some(key => !newKeys.has(key));
+
+        if (wasResolved) {
+          // Re-fetch backend to get the real confirmed decision
+          getTickets(page, PAGE_SIZE)
+            .then(data => {
+              setTickets(data.tickets);
+              setTotal(data.total);
+            })
+            .catch(() => {});
+        }
+
+        return newKeys;
+      });
+    }, 1500);
+
+    return () => clearInterval(interval);
+  }, [page]);
+
+  // ── isPending check for a backend ticket ──────────────────────────────
+  // Returns true only if localStorage still has a pending:true entry
+  // matching this ticket's title + submitted_by.
+  // Once Simulation.tsx patches it to pending:false, this returns false
+  // and the real backend decision is shown.
+  const isPending = (ticket: TicketAPIResponse): boolean => {
+    if (pendingIds.size === 0) return false;
+    const key = `${ticket.title.trim().toLowerCase()}||${(ticket.submitted_by ?? "").trim().toLowerCase()}`;
+    return pendingIds.has(key);
+  };
 
   // ── Client-side filter + search ────────────────────────────────────────
   const filtered = tickets.filter(t => {
@@ -317,8 +371,10 @@ export default function TicketHistory() {
       <style>{`
         @keyframes fadeUp  { from{ opacity:0; transform:translateY(12px); } to{ opacity:1; transform:translateY(0); } }
         @keyframes spin    { to{ transform: rotate(360deg); } }
-        .fade-up   { animation: fadeUp 0.4s ease both; }
+        @keyframes pulse   { 0%,100%{ opacity:1; } 50%{ opacity:0.35; } }
+        .fade-up         { animation: fadeUp 0.4s ease both; }
         .row-hover:hover { background: rgba(255,77,0,0.025); }
+        .pending-pulse   { animation: pulse 1.4s ease-in-out infinite; }
       `}</style>
 
       <div className="flex flex-col gap-5 fade-up">
@@ -326,7 +382,6 @@ export default function TicketHistory() {
         {/* ── Header ── */}
         <div className="flex items-start justify-between flex-wrap gap-3">
           <div>
-            {/*  */}
             <p className="text-[13px] text-[#6B6B6B]">
               All tickets from database — {total} total
             </p>
@@ -433,8 +488,10 @@ export default function TicketHistory() {
 
             {/* Rows */}
             {filtered.map((ticket, i) => {
-              const decision = normalizeDecision(ticket);
-              const dec      = DECISION_META[decision];
+              const decision  = normalizeDecision(ticket);
+              const dec       = DECISION_META[decision];
+              const pending   = isPending(ticket);
+
               return (
                 <div key={ticket.id}
                   onClick={() => setSelected(ticket)}
@@ -459,11 +516,21 @@ export default function TicketHistory() {
                     {CATEGORY_ICONS[ticket.category ?? ""] ?? "📋"} {CATEGORY_LABELS[ticket.category ?? ""] ?? ticket.category ?? "—"}
                   </span>
 
-                  {/* Decision */}
+                  {/* ── Decision column ──────────────────────────────────────
+                      pending=true  → pulsing amber dot + "Under Review…"
+                                      (backend saved it but AI still processing)
+                      pending=false → real decision from backend, correct color
+                  ─────────────────────────────────────────────────────────── */}
                   <div className="flex items-center gap-1.5">
-                    <span className="w-1.5 h-1.5 rounded-full shrink-0" style={{ background: dec.dot }} />
-                    <span className="text-[11px] font-semibold truncate" style={{ color: dec.color }}>
-                      {dec.label}
+                    <span
+                      className={`w-1.5 h-1.5 rounded-full shrink-0 ${pending ? "pending-pulse" : ""}`}
+                      style={{ background: pending ? "#b45309" : dec.dot }}
+                    />
+                    <span
+                      className="text-[11px] font-semibold truncate"
+                      style={{ color: pending ? "#b45309" : dec.color }}
+                    >
+                      {pending ? "Under Review…" : dec.label}
                     </span>
                   </div>
 
