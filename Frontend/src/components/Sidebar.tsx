@@ -21,9 +21,7 @@ interface NavItem {
 const NAV_MAIN: NavItem[] = [
   { id: "overview",  label: "Overview",     icon: Icons.overview  },
   { id: "tickets",   label: "Tickets",      icon: Icons.tickets   },
-  { id: "decisions", label: "AI Decisions", icon: Icons.decisions },
   { id: "audit",     label: "Audit Logs",   icon: Icons.audit     },
-  { id: "feedback",  label: "Feedback",     icon: Icons.feedback  },
 ];
 
 const NAV_TRIAL: NavItem[] = [

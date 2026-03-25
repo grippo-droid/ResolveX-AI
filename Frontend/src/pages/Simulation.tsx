@@ -282,12 +282,7 @@ export default function Simulation() {
 
           {/* LEFT: Theory panel */}
           <div className="lg:w-[260px] shrink-0 flex flex-col gap-4">
-            <div className="flex items-center gap-2.5 bg-[#FF4D00]/[0.07] border border-[#FF4D00]/20 rounded-xl px-4 py-3">
-              <span className="pulse-dot w-1.5 h-1.5 rounded-full bg-[#FF4D00] shrink-0" />
-              <span className="text-[12px] font-medium text-[#FF4D00] leading-snug">
-                Live mode — connected to real backend
-              </span>
-            </div>
+        
 
             <div className="bg-white rounded-2xl border border-black/10 p-5 flex flex-col gap-4">
               <p className="text-[13px] font-bold text-[#0A0A0A]">What happens when you submit?</p>

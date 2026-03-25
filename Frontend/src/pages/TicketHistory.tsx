@@ -119,33 +119,22 @@ function TicketDrawer({
         >
           <div>
             <div className="flex items-center gap-2 mb-1.5 flex-wrap">
-              {/* Decision badge — "Under Review" when pending */}
-              {isPending ? (
-                <span
-                  className="text-[11px] font-bold px-2.5 py-0.5 rounded-full border"
-                  style={{ color: "#b45309", borderColor: "#fde68a", background: "white" }}
-                >
-                  Under Review
-                </span>
-              ) : (
-                <span
-                  className="text-[11px] font-bold px-2.5 py-0.5 rounded-full border"
-                  style={{ color: dec.color, borderColor: dec.border, background: "white" }}
-                >
-                  {dec.label}
-                </span>
-              )}
+              {/* Unified Status badge */}
+              {(() => {
+                let badge = { label: "In Progress", color: "#b45309", border: "#fde68a", bg: "white" };
+                if (decision === "auto-resolved" || ticket.status?.toLowerCase() === "closed" || ticket.status?.toLowerCase() === "resolved") badge = { label: "Closed", color: "#15803d", border: "#bbf7d0", bg: "white" };
+                else if (decision === "escalated") badge = { label: "Escalated", color: "#FF4D00", border: "#ffd0c0", bg: "white" };
+                
+                return (
+                  <span className="text-[11px] font-bold px-2.5 py-0.5 rounded-full border"
+                    style={{ color: badge.color, borderColor: badge.border, background: badge.bg }}>
+                    {badge.label}
+                  </span>
+                );
+              })()}
               <span className="text-[11px] font-mono text-[#6B6B6B]">
                 TKT-{String(ticket.id).padStart(5, "0")}
               </span>
-              {ticket.status && (
-                <span
-                  className="text-[11px] font-bold px-2.5 py-0.5 rounded-full"
-                  style={{ color: statusStyle.color, background: statusStyle.bg }}
-                >
-                  {ticket.status.charAt(0).toUpperCase() + ticket.status.slice(1)}
-                </span>
-              )}
             </div>
             <h3 className="text-[16px] font-extrabold text-[#0A0A0A] leading-snug max-w-[420px]">
               {ticket.title}
@@ -193,51 +182,59 @@ function TicketDrawer({
               />
             </div>
           ) : (
-            /* ── RESOLVED: AI Decision Banner (original) ── */
-            <div
-              className="flex items-center gap-4 px-4 py-3.5 rounded-xl border"
-              style={{ background: dec.bg, borderColor: dec.border }}
-            >
-              <div
-                className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0"
-                style={{ background: dec.color + "18", border: `1.5px solid ${dec.border}` }}
-              >
-                {decision === "auto-resolved" && (
-                  <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-                    <circle cx="8" cy="8" r="6.5" stroke={dec.color} strokeWidth="1.4"/>
-                    <path d="M5 8l2 2 4-4" stroke={dec.color} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-                  </svg>
-                )}
-                {decision === "human-review" && (
-                  <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-                    <circle cx="8" cy="6" r="2.5" stroke={dec.color} strokeWidth="1.4"/>
-                    <path d="M3.5 13c0-2.5 2-4 4.5-4s4.5 1.5 4.5 4" stroke={dec.color} strokeWidth="1.4" strokeLinecap="round"/>
-                  </svg>
-                )}
-                {decision === "escalated" && (
-                  <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-                    <path d="M8 2v7M8 11v1.5" stroke={dec.color} strokeWidth="1.5" strokeLinecap="round"/>
-                    <path d="M3 13.5h10" stroke={dec.color} strokeWidth="1.4" strokeLinecap="round"/>
-                  </svg>
-                )}
-              </div>
-              <div className="flex-1 min-w-0">
-                <p className="text-[10px] font-bold uppercase tracking-[1.2px] mb-0.5" style={{ color: dec.color }}>
-                  AI Decision
-                </p>
-                <p className="text-[14px] font-extrabold text-[#0A0A0A]">{dec.label}</p>
-                {ticket.intent && (
-                  <p className="text-[11px] text-[#6B6B6B] mt-0.5">
-                    Intent: <span className="font-semibold text-[#0A0A0A]">{ticket.intent}</span>
-                  </p>
-                )}
-              </div>
-              {ticket.processing_time && (
-                <span className="text-[10px] font-medium text-[#ABABAB] shrink-0">
-                  {ticket.processing_time}ms
-                </span>
-              )}
-            </div>
+            /* ── RESOLVED: AI Decision Banner ── */
+            (() => {
+              let badge = { label: "In Progress", color: "#b45309", border: "#fde68a", bg: "#fffbeb" };
+              if (decision === "auto-resolved" || ticket.status?.toLowerCase() === "closed" || ticket.status?.toLowerCase() === "resolved") badge = { label: "Closed", color: "#15803d", border: "#bbf7d0", bg: "#f0fdf4" };
+              else if (decision === "escalated") badge = { label: "Escalated", color: "#FF4D00", border: "#ffd0c0", bg: "#fff7f5" };
+
+              return (
+                <div
+                  className="flex items-center gap-4 px-4 py-3.5 rounded-xl border"
+                  style={{ background: badge.bg, borderColor: badge.border }}
+                >
+                  <div
+                    className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0"
+                    style={{ background: badge.color + "18", border: `1.5px solid ${badge.border}` }}
+                  >
+                    {(decision === "auto-resolved" || badge.label === "Closed") && (
+                      <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+                        <circle cx="8" cy="8" r="6.5" stroke={badge.color} strokeWidth="1.4"/>
+                        <path d="M5 8l2 2 4-4" stroke={badge.color} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                      </svg>
+                    )}
+                    {badge.label === "In Progress" && (
+                      <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+                        <circle cx="8" cy="6" r="2.5" stroke={badge.color} strokeWidth="1.4"/>
+                        <path d="M3.5 13c0-2.5 2-4 4.5-4s4.5 1.5 4.5 4" stroke={badge.color} strokeWidth="1.4" strokeLinecap="round"/>
+                      </svg>
+                    )}
+                    {badge.label === "Escalated" && (
+                      <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+                        <path d="M8 2v7M8 11v1.5" stroke={badge.color} strokeWidth="1.5" strokeLinecap="round"/>
+                        <path d="M3 13.5h10" stroke={badge.color} strokeWidth="1.4" strokeLinecap="round"/>
+                      </svg>
+                    )}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-[10px] font-bold uppercase tracking-[1.2px] mb-0.5" style={{ color: badge.color }}>
+                      AI Decision
+                    </p>
+                    <p className="text-[14px] font-extrabold text-[#0A0A0A]">{badge.label}</p>
+                    {ticket.intent && (
+                      <p className="text-[11px] text-[#6B6B6B] mt-0.5">
+                        Intent: <span className="font-semibold text-[#0A0A0A]">{ticket.intent}</span>
+                      </p>
+                    )}
+                  </div>
+                  {ticket.processing_time && (
+                    <span className="text-[10px] font-medium text-[#ABABAB] shrink-0">
+                      {ticket.processing_time}ms
+                    </span>
+                  )}
+                </div>
+              );
+            })()
           )}
 
           {/* Meta Grid (always visible) */}
@@ -306,7 +303,7 @@ export default function TicketHistory() {
   const [selected,   setSelected]  = useState<TicketAPIResponse | null>(null);
   const [loading,    setLoading]   = useState(true);
   const [error,      setError]     = useState<string | null>(null);
-  const [filter,     setFilter]    = useState<"all" | Decision>("all");
+  const [filter,     setFilter]    = useState<"all" | "in-progress" | "escalated" | "closed">("all");
   const [search,     setSearch]    = useState("");
   const [page,       setPage]      = useState(1);
   const [total,      setTotal]     = useState(0);
@@ -359,10 +356,19 @@ export default function TicketHistory() {
     return () => clearInterval(interval);
   }, [page]);
 
+  // ── Unified status lookup helper ───────────────────────────────────────
+  const getUnifiedStatusKey = useCallback((t: TicketAPIResponse) => {
+    if (isPending(t)) return "in-progress";
+    const dec = normalizeDecision(t);
+    if (dec === "auto-resolved" || t.status?.toLowerCase() === "closed" || t.status?.toLowerCase() === "resolved") return "closed";
+    if (dec === "escalated") return "escalated";
+    return "in-progress";
+  }, [isPending]);
+
   // ── Client-side filter + search ────────────────────────────────────────
   const filtered = tickets.filter(t => {
-    const decision    = normalizeDecision(t);
-    const matchFilter = filter === "all" || decision === filter;
+    const statusKey   = getUnifiedStatusKey(t);
+    const matchFilter = filter === "all" || statusKey === filter;
     const matchSearch =
       !search.trim() ||
       t.title.toLowerCase().includes(search.toLowerCase()) ||
@@ -372,10 +378,10 @@ export default function TicketHistory() {
   });
 
   const counts = {
-    all:             tickets.length,
-    "auto-resolved": tickets.filter(t => normalizeDecision(t) === "auto-resolved").length,
-    "human-review":  tickets.filter(t => normalizeDecision(t) === "human-review").length,
-    "escalated":     tickets.filter(t => normalizeDecision(t) === "escalated").length,
+    all:        tickets.length,
+    inProgress: tickets.filter(t => getUnifiedStatusKey(t) === "in-progress").length,
+    escalated:  tickets.filter(t => getUnifiedStatusKey(t) === "escalated").length,
+    closed:     tickets.filter(t => getUnifiedStatusKey(t) === "closed").length,
   };
 
   // ── Loading ────────────────────────────────────────────────────────────
@@ -446,10 +452,10 @@ export default function TicketHistory() {
         {tickets.length > 0 && (
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
             {[
-              { key: "all",           label: "Total",         color: "#0A0A0A", bg: "white"   },
-              { key: "auto-resolved", label: "Auto Resolved", color: "#15803d", bg: "#f0fdf4" },
-              { key: "human-review",  label: "Under Review",  color: "#b45309", bg: "#fffbeb" },
-              { key: "escalated",     label: "Escalated",     color: "#FF4D00", bg: "#fff7f5" },
+              { key: "all",          label: "Total",       color: "#0A0A0A", bg: "white",   count: counts.all        },
+              { key: "in-progress",  label: "In Progress", color: "#b45309", bg: "#fffbeb", count: counts.inProgress },
+              { key: "escalated",    label: "Escalated",   color: "#FF4D00", bg: "#fff7f5", count: counts.escalated  },
+              { key: "closed",       label: "Closed",      color: "#15803d", bg: "#f0fdf4", count: counts.closed     },
             ].map(s => (
               <button key={s.key}
                 onClick={() => { setFilter(s.key as typeof filter); setPage(1); }}
@@ -460,7 +466,7 @@ export default function TicketHistory() {
                   boxShadow:   filter === s.key ? `0 0 0 1.5px ${s.color}33` : "none",
                 }}>
                 <span className="text-[26px] font-extrabold leading-none" style={{ color: s.color }}>
-                  {counts[s.key as keyof typeof counts]}
+                  {s.count}
                 </span>
                 <span className="text-[12px] font-semibold text-[#6B6B6B]">{s.label}</span>
               </button>
@@ -561,28 +567,35 @@ export default function TicketHistory() {
                     {CATEGORY_ICONS[ticket.category ?? ""] ?? "📋"} {CATEGORY_LABELS[ticket.category ?? ""] ?? ticket.category ?? "—"}
                   </span>
 
-                  {/* Status column — pending shows pulsing dot + "Under Review…", resolved shows decision badge */}
-                  {pending ? (
-                    <div className="flex items-center gap-1.5">
-                      <span
-                        className="w-1.5 h-1.5 rounded-full shrink-0 pending-pulse"
-                        style={{ background: "#b45309" }}
-                      />
-                      <span className="text-[11px] font-semibold truncate" style={{ color: "#b45309" }}>
-                        Under Review…
+                  {/* Status — unified visual */}
+                  {(() => {
+                    const statusKey = pending ? "in-progress" : 
+                      (decision === "auto-resolved" || ticket.status?.toLowerCase() === "closed" || ticket.status?.toLowerCase() === "resolved") ? "closed" : 
+                      (decision === "escalated" ? "escalated" : "in-progress");
+                      
+                    if (statusKey === "in-progress") {
+                      return (
+                        <div className="flex items-center gap-1.5">
+                          <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${pending ? 'pending-pulse' : ''}`} style={{ background: "#b45309" }} />
+                          <span className="text-[11px] font-semibold truncate" style={{ color: "#b45309" }}>
+                            In Progress
+                          </span>
+                        </div>
+                      );
+                    }
+                    if (statusKey === "escalated") {
+                      return (
+                        <span className="text-[11px] font-bold px-2.5 py-1 rounded-full w-fit" style={{ color: "#FF4D00", background: "#fff7f5" }}>
+                          Escalated
+                        </span>
+                      );
+                    }
+                    return (
+                      <span className="text-[11px] font-bold px-2.5 py-1 rounded-full w-fit" style={{ color: "#15803d", background: "#f0fdf4" }}>
+                        Closed
                       </span>
-                    </div>
-                  ) : (
-                    <div className="flex items-center gap-1.5">
-                      <span
-                        className="w-1.5 h-1.5 rounded-full shrink-0"
-                        style={{ background: dec.dot }}
-                      />
-                      <span className="text-[11px] font-semibold truncate" style={{ color: dec.color }}>
-                        {dec.label}
-                      </span>
-                    </div>
-                  )}
+                    );
+                  })()}
 
                   {/* Time */}
                   <span className="text-[11px] text-[#ABABAB]">

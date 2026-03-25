@@ -164,24 +164,21 @@ function TicketDetailDrawer({
         >
           <div>
             <div className="flex items-center gap-2 mb-1.5 flex-wrap">
-              {/* Decision badge — shows "Under Review…" when pending */}
-              {isPending ? (
-                <span className="text-[11px] font-bold px-2.5 py-0.5 rounded-full border"
-                  style={{ color: "#b45309", borderColor: "#fde68a", background: "white" }}>
-                  Under Review
-                </span>
-              ) : (
-                <span className="text-[11px] font-bold px-2.5 py-0.5 rounded-full border"
-                  style={{ color: dec.color, borderColor: dec.border, background: "white" }}>
-                  {dec.label}
-                </span>
-              )}
+              {/* Unified Status badge */}
+              {(() => {
+                let badge = { label: "In Progress", color: "#b45309", border: "#fde68a", bg: "white" };
+                if (decision === "auto-resolved" || localStatus.toLowerCase() === "closed" || localStatus.toLowerCase() === "resolved") badge = { label: "Closed", color: "#15803d", border: "#bbf7d0", bg: "white" };
+                else if (decision === "escalated") badge = { label: "Escalated", color: "#FF4D00", border: "#ffd0c0", bg: "white" };
+                
+                return (
+                  <span className="text-[11px] font-bold px-2.5 py-0.5 rounded-full border"
+                    style={{ color: badge.color, borderColor: badge.border, background: badge.bg }}>
+                    {badge.label}
+                  </span>
+                );
+              })()}
               <span className="text-[11px] font-mono text-[#6B6B6B]">
                 TKT-{String(ticket.id).padStart(5, "0")}
-              </span>
-              <span className="text-[11px] font-bold px-2.5 py-0.5 rounded-full"
-                style={{ color: getStatusColor(localStatus).color, background: getStatusColor(localStatus).bg }}>
-                {localStatus.charAt(0).toUpperCase() + localStatus.slice(1)}
               </span>
               {saveSuccess && (
                 <span className="text-[11px] font-semibold text-[#15803d] bg-[#f0fdf4] px-2 py-0.5 rounded-full">
@@ -232,34 +229,42 @@ function TicketDetailDrawer({
               />
             </div>
           ) : (
-            /* ── RESOLVED: Confidence Ring + AI Decision (unchanged) ── */
-            <div className="flex items-center gap-5 p-4 rounded-xl border"
-              style={{ background: dec.bg, borderColor: dec.border }}>
-              <div className="relative w-24 h-24 shrink-0 flex items-center justify-center">
-                <svg width="96" height="96" viewBox="0 0 96 96" style={{ transform: "rotate(-90deg)" }}>
-                  <circle cx="48" cy="48" r={radius} fill="none" stroke="rgba(10,10,10,0.08)" strokeWidth="8"/>
-                  <circle cx="48" cy="48" r={radius} fill="none" stroke={confColor} strokeWidth="8"
-                    strokeLinecap="round" strokeDasharray={circ} strokeDashoffset={offset}
-                    style={{ transition: "stroke-dashoffset 1s ease" }}/>
-                </svg>
-                <div className="absolute inset-0 flex flex-col items-center justify-center">
-                  <span className="text-xl font-extrabold" style={{ color: confColor }}>{conf}%</span>
-                  <span className="text-[9px] font-medium text-[#6B6B6B]">confidence</span>
+            /* ── RESOLVED: Confidence Ring + AI Decision ── */
+            (() => {
+              let badge = { label: "In Progress", color: "#b45309", border: "#fde68a", bg: "#fffbeb" };
+              if (decision === "auto-resolved" || localStatus.toLowerCase() === "closed" || localStatus.toLowerCase() === "resolved") badge = { label: "Closed", color: "#15803d", border: "#bbf7d0", bg: "#f0fdf4" };
+              else if (decision === "escalated") badge = { label: "Escalated", color: "#FF4D00", border: "#ffd0c0", bg: "#fff7f5" };
+
+              return (
+                <div className="flex items-center gap-5 p-4 rounded-xl border"
+                  style={{ background: badge.bg, borderColor: badge.border }}>
+                  <div className="relative w-24 h-24 shrink-0 flex items-center justify-center">
+                    <svg width="96" height="96" viewBox="0 0 96 96" style={{ transform: "rotate(-90deg)" }}>
+                      <circle cx="48" cy="48" r={radius} fill="none" stroke="rgba(10,10,10,0.08)" strokeWidth="8"/>
+                      <circle cx="48" cy="48" r={radius} fill="none" stroke={confColor} strokeWidth="8"
+                        strokeLinecap="round" strokeDasharray={circ} strokeDashoffset={offset}
+                        style={{ transition: "stroke-dashoffset 1s ease" }}/>
+                    </svg>
+                    <div className="absolute inset-0 flex flex-col items-center justify-center">
+                      <span className="text-xl font-extrabold" style={{ color: confColor }}>{conf}%</span>
+                      <span className="text-[9px] font-medium text-[#6B6B6B]">confidence</span>
+                    </div>
+                  </div>
+                  <div className="flex-1">
+                    <p className="text-[10px] font-bold uppercase tracking-[1.2px] mb-1" style={{ color: badge.color }}>
+                      AI Decision
+                    </p>
+                    <p className="text-[15px] font-extrabold text-[#0A0A0A] mb-1">{badge.label}</p>
+                    <p className="text-[12px] text-[#6B6B6B]">
+                      Intent: <span className="font-semibold text-[#0A0A0A]">{ticket.intent ?? ticket.category ?? "—"}</span>
+                    </p>
+                    {ticket.processing_time && (
+                      <p className="text-[11px] text-[#ABABAB] mt-0.5">Processed in {ticket.processing_time}ms</p>
+                    )}
+                  </div>
                 </div>
-              </div>
-              <div className="flex-1">
-                <p className="text-[10px] font-bold uppercase tracking-[1.2px] mb-1" style={{ color: dec.color }}>
-                  AI Decision
-                </p>
-                <p className="text-[15px] font-extrabold text-[#0A0A0A] mb-1">{dec.label}</p>
-                <p className="text-[12px] text-[#6B6B6B]">
-                  Intent: <span className="font-semibold text-[#0A0A0A]">{ticket.intent ?? ticket.category ?? "—"}</span>
-                </p>
-                {ticket.processing_time && (
-                  <p className="text-[11px] text-[#ABABAB] mt-0.5">Processed in {ticket.processing_time}ms</p>
-                )}
-              </div>
-            </div>
+              );
+            })()
           )}
 
           {/* ── Meta Grid (always visible) ── */}
@@ -294,47 +299,8 @@ function TicketDetailDrawer({
               </div>
             )}
 
-            {/* Status change — hidden for auto-resolved and pending */}
-            {!isPending && decision !== "auto-resolved" && (
-              <div className="flex flex-col gap-1.5">
-                <label className="text-[11px] font-semibold text-[#6B6B6B]">Change Status</label>
-                <div className="flex gap-2 flex-wrap">
-                  {STATUS_OPTIONS.map(s => {
-                    const sc = getStatusColor(s);
-                    return (
-                      <button key={s} onClick={() => handleStatusChange(s)}
-                        disabled={saving}
-                        className="text-[11px] font-bold px-3 py-1.5 rounded-lg border cursor-pointer transition-all disabled:opacity-50"
-                        style={{
-                          color:       localStatus === s ? sc.color : "#6B6B6B",
-                          background:  localStatus === s ? sc.bg    : "white",
-                          borderColor: localStatus === s ? sc.color : "rgba(10,10,10,0.12)",
-                        }}>
-                        {s.charAt(0).toUpperCase() + s.slice(1)}
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-            )}
-
-            {/* Assign to (always visible) */}
-            <div className="flex flex-col gap-1.5">
-              <label className="text-[11px] font-semibold text-[#6B6B6B]">Assign To</label>
-              <div className="flex gap-2">
-                <input type="text" placeholder="Agent name or email…"
-                  value={assignee} onChange={e => setAssignee(e.target.value)}
-                  className="flex-1 bg-white border border-black/[0.12] rounded-xl px-3 py-2 text-[13px] text-[#0A0A0A] outline-none focus:border-[#FF4D00] transition-all placeholder:text-[#ABABAB]"
-                />
-                <button onClick={handleAssign} disabled={saving || !assignee.trim()}
-                  className="bg-[#0A0A0A] text-white text-[12px] font-bold px-4 py-2 rounded-xl border-none cursor-pointer hover:bg-[#1a1a1a] disabled:opacity-40 transition-all">
-                  {saving ? "…" : "Assign"}
-                </button>
-              </div>
-            </div>
-
-            {/* Close Ticket — escalated only, not yet closed, not pending */}
-            {!isPending && decision === "escalated" && localStatus !== "closed" && (
+            {/* Close Ticket — for any open ticket that needs manual closing */}
+            {!isPending && localStatus !== "closed" && decision !== "auto-resolved" && (
               <div className="flex flex-col gap-1.5">
                 <label className="text-[11px] font-semibold text-[#6B6B6B]">Close Ticket</label>
                 <button
@@ -348,7 +314,7 @@ function TicketDetailDrawer({
                   {saving ? "Closing…" : "Close this Ticket"}
                 </button>
                 <p className="text-[11px] text-[#ABABAB]">
-                  This ticket was escalated. Manually close it once the issue is resolved.
+                  Click to manually close this ticket once the issue is resolved.
                 </p>
               </div>
             )}
@@ -649,7 +615,14 @@ export default function TicketsList() {
         (t.submitted_by ?? "").toLowerCase().includes(search.toLowerCase()) ||
         (t.assigned_to  ?? "").toLowerCase().includes(search.toLowerCase()) ||
         String(t.id).includes(search);
-      return matchSearch;
+        
+      const statusKey = isPending(t) ? "in-progress" : 
+        (normalizeDecision(t) === "auto-resolved" || t.status?.toLowerCase() === "closed") ? "closed" : 
+        (normalizeDecision(t) === "escalated" ? "escalated" : "in-progress");
+        
+      const matchFilter = filterStatus === "all" || statusKey === filterStatus;
+
+      return matchSearch && matchFilter;
     })
     .sort((a, b) => {
       let valA: number | string = 0;
@@ -671,16 +644,20 @@ export default function TicketsList() {
     });
 
   // Counts by actual ticket status
+  // Unified status logic for counts
+  const getUnifiedStatusKey = (t: TicketAPIResponse) => {
+    if (isPending(t)) return "in-progress";
+    const dec = normalizeDecision(t);
+    if (dec === "auto-resolved" || t.status?.toLowerCase() === "closed" || t.status?.toLowerCase() === "resolved") return "closed";
+    if (dec === "escalated") return "escalated";
+    return "in-progress";
+  };
+
   const counts = {
     all:        tickets.length,
-    open:       tickets.filter(t => t.status?.toLowerCase() === "open").length,
-    inProgress: tickets.filter(t => t.status?.toLowerCase() === "in-progress").length,
-    resolved:   tickets.filter(t => t.status?.toLowerCase() === "resolved").length,
-    closed:     tickets.filter(t =>
-      t.status?.toLowerCase() === "closed" ||
-      t.status?.toLowerCase() === "auto_resolved" ||
-      t.status?.toLowerCase() === "auto-resolved"
-    ).length,
+    inProgress: tickets.filter(t => getUnifiedStatusKey(t) === "in-progress").length,
+    escalated:  tickets.filter(t => getUnifiedStatusKey(t) === "escalated").length,
+    closed:     tickets.filter(t => getUnifiedStatusKey(t) === "closed").length,
   };
 
   const toggleSort = (field: SortField) => {
@@ -784,13 +761,12 @@ export default function TicketsList() {
         </div>
 
         {/* ── Stats Cards — by status ── */}
-        <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
           {[
             { key: "all",          label: "Total",       color: "#0A0A0A", bg: "white",   count: counts.all        },
-            { key: "open",         label: "Open",        color: "#2563eb", bg: "#eff6ff", count: counts.open       },
             { key: "in-progress",  label: "In Progress", color: "#b45309", bg: "#fffbeb", count: counts.inProgress },
-            { key: "resolved",     label: "Resolved",    color: "#15803d", bg: "#f0fdf4", count: counts.resolved   },
-            { key: "closed",       label: "Closed",      color: "#6B6B6B", bg: "#F5F5F5", count: counts.closed     },
+            { key: "escalated",    label: "Escalated",   color: "#FF4D00", bg: "#fff7f5", count: counts.escalated  },
+            { key: "closed",       label: "Closed",      color: "#15803d", bg: "#f0fdf4", count: counts.closed     },
           ].map(s => (
             <button key={s.key}
               onClick={() => { setFilterStatus(s.key === "all" ? "all" : s.key); setPage(1); }}
@@ -927,23 +903,35 @@ export default function TicketsList() {
                     {CATEGORY_ICONS[ticket.category ?? ""] ?? "📋"} {CATEGORY_LABELS[ticket.category ?? ""] ?? ticket.category ?? "—"}
                   </span>
 
-                  {/* Status — shows pending pulse dot when waiting */}
-                  {pending ? (
-                    <div className="flex items-center gap-1.5">
-                      <span
-                        className="w-1.5 h-1.5 rounded-full shrink-0 pending-pulse"
-                        style={{ background: "#b45309" }}
-                      />
-                      <span className="text-[11px] font-semibold truncate" style={{ color: "#b45309" }}>
-                        Under Review…
+                  {/* Status — unified visual */}
+                  {(() => {
+                    const statusKey = pending ? "in-progress" : 
+                      (decision === "auto-resolved" || ticket.status?.toLowerCase() === "closed" || ticket.status?.toLowerCase() === "resolved") ? "closed" : 
+                      (decision === "escalated" ? "escalated" : "in-progress");
+                      
+                    if (statusKey === "in-progress") {
+                      return (
+                        <div className="flex items-center gap-1.5">
+                          <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${pending ? 'pending-pulse' : ''}`} style={{ background: "#b45309" }} />
+                          <span className="text-[11px] font-semibold truncate" style={{ color: "#b45309" }}>
+                            In Progress
+                          </span>
+                        </div>
+                      );
+                    }
+                    if (statusKey === "escalated") {
+                      return (
+                        <span className="text-[11px] font-bold px-2.5 py-1 rounded-full w-fit" style={{ color: "#FF4D00", background: "#fff7f5" }}>
+                          Escalated
+                        </span>
+                      );
+                    }
+                    return (
+                      <span className="text-[11px] font-bold px-2.5 py-1 rounded-full w-fit" style={{ color: "#15803d", background: "#f0fdf4" }}>
+                        Closed
                       </span>
-                    </div>
-                  ) : (
-                    <span className="text-[11px] font-bold px-2.5 py-1 rounded-full w-fit"
-                      style={{ color: statusStyle.color, background: statusStyle.bg }}>
-                      {(ticket.status ?? "open").charAt(0).toUpperCase() + (ticket.status ?? "open").slice(1)}
-                    </span>
-                  )}
+                    );
+                  })()}
 
                   {/* Confidence — hidden when pending */}
                   {pending ? (
