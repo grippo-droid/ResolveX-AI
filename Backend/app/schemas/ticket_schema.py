@@ -2,8 +2,8 @@
 ticket_schema.py — Pydantic schemas for ticket request/response contracts.
 """
 
-from pydantic import BaseModel, Field
-from typing import Optional
+from pydantic import BaseModel, Field, ConfigDict
+from typing import Optional, List
 from datetime import datetime
 
 
@@ -37,8 +37,27 @@ class TicketResponse(BaseModel):
     explanation: Optional[str] = None
     submitted_by: Optional[str] = None
     assigned_to: Optional[str] = None
+    model_config = ConfigDict(from_attributes=True)
+    assigned_resolver_id: Optional[str] = None
+    assigned_resolver_name: Optional[str] = None
+    assigned_resolver_category: Optional[str] = None
+    assigned_at: Optional[datetime] = None
+    
     created_at: Optional[datetime] = None
     updated_at: Optional[datetime] = None
+
+class PipelineStep(BaseModel):
+    key: str
+    label: str
+    state: str
+    timestamp: Optional[str] = None
+    details: Optional[dict] = None
+    model_config = ConfigDict(from_attributes=True)
+
+class TicketPipelineTracker(BaseModel):
+    ticket_id: int
+    current_step: str
+    steps: List[PipelineStep]
 
     class Config:
         from_attributes = True   # replaces orm_mode in Pydantic v2
@@ -50,3 +69,4 @@ class TicketListResponse(BaseModel):
     page: int
     page_size: int
     tickets: list[TicketResponse]
+    model_config = ConfigDict(from_attributes=True)

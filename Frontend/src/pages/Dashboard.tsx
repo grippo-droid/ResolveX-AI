@@ -4,6 +4,8 @@ import Navbar                          from "../components/Navbar";
 import Simulation                      from "./Simulation";
 import TicketHistory                   from "./TicketHistory";
 import TicketsList                     from "./Ticketslist";
+import Analytics                       from "./Analytics";
+import AuditLogs                       from "./AuditLogs";
 import { getTickets }                  from "../services/api";
 
 const PAGE_LABELS: Record<string, string> = {
@@ -71,9 +73,11 @@ export default function Dashboard() {
           activeLabel={PAGE_LABELS[activeId] ?? "Dashboard"}
         />
         <main className="flex-1 overflow-y-auto px-7 py-7" role="main">
+          {activeId === "overview"      && <Analytics />}
           {activeId === "simulation"    && <Simulation />}
           {activeId === "tickethistory" && <TicketHistory />}
           {activeId === "tickets"       && <TicketsList />}
+          {activeId === "audit"         && <AuditLogs />}
           {/* other sections coming soon */}
         </main>
       </div>

@@ -16,16 +16,16 @@ PRIORITY_HIGH = "high"
 PRIORITY_CRITICAL = "critical"
 
 # ── Confidence thresholds ─────────────────────────────────────────────────────
-CONFIDENCE_HIGH = 0.75   # auto-resolve threshold
+CONFIDENCE_HIGH = 0.70   # auto-resolve threshold
 CONFIDENCE_LOW = 0.50    # escalate to HITL threshold
 
 # ── Ticket categories ─────────────────────────────────────────────────────────
 CATEGORIES = [
-    "billing",
-    "technical",
-    "account",
-    "feature_request",
-    "bug_report",
+    "software",
+    "hardware",
+    "network",
+    "access_permission",
+    "security",
     "other",
 ]
 

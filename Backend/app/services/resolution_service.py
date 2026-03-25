@@ -10,7 +10,9 @@ from app.schemas.resolution_schema import ResolutionResult
 from app.core.exceptions import TicketNotFoundException
 from app.core.constants import CONFIDENCE_HIGH, CONFIDENCE_LOW, STATUS_AUTO_RESOLVED, STATUS_ESCALATED
 from app.core.logger import logger
+from app.core.expert_resolvers import get_best_expert_resolver
 from ai.pipeline.ticket_pipeline import run_pipeline
+from datetime import datetime, timezone
 
 
 class ResolutionService:
@@ -50,6 +52,16 @@ class ResolutionService:
 
         new_status = STATUS_AUTO_RESOLVED if auto_resolved else STATUS_ESCALATED
 
+        # ── Expert Resolver Assignment ──────────────────────────────────────────
+        if new_status == STATUS_ESCALATED:
+            ticket_text = f"{ticket.title} {ticket.description}"
+            resolver = get_best_expert_resolver(category, ticket_text)
+            ticket.assigned_resolver_id = resolver["id"]
+            ticket.assigned_resolver_name = resolver["name"]
+            ticket.assigned_resolver_category = resolver["category"]
+            ticket.assigned_at = datetime.now(timezone.utc)
+            logger.info(f"Assigned expert resolver {resolver['name']} to ticket {ticket_id}")
+
         # ── Persist results ────────────────────────────────────────────────────
         ticket.solution = solution
         ticket.confidence = confidence
@@ -68,6 +80,9 @@ class ResolutionService:
             auto_resolved=auto_resolved,
             escalated_to_human=escalated,
             explanation=explanation,
+            assigned_resolver_id=ticket.assigned_resolver_id,
+            assigned_resolver_name=ticket.assigned_resolver_name,
+            assigned_resolver_category=ticket.assigned_resolver_category,
         )
 
     def get_resolution(self, ticket_id: int) -> ResolutionResult:
@@ -87,4 +102,7 @@ class ResolutionService:
             auto_resolved=ticket.status == STATUS_AUTO_RESOLVED,
             escalated_to_human=ticket.status == STATUS_ESCALATED,
             explanation=ticket.explanation,
+            assigned_resolver_id=ticket.assigned_resolver_id,
+            assigned_resolver_name=ticket.assigned_resolver_name,
+            assigned_resolver_category=ticket.assigned_resolver_category,
         )

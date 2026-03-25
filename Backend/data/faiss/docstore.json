@@ -30,5 +30,1125 @@
     "title": "Password Reset Email Delivery",
     "category": "access_permission",
     "content": "Check spam folder, whitelist noreply@resolvex.ai, resend."
+  },
+  {
+    "index_id": 4,
+    "doc_id": 5,
+    "source": "kb",
+    "title": "Email Client Not Syncing",
+    "category": "software",
+    "content": "Check internet connection, refresh inbox, reconfigure email account."
+  },
+  {
+    "index_id": 5,
+    "doc_id": 6,
+    "source": "kb",
+    "title": "Software Update Failed",
+    "category": "software",
+    "content": "Check update server, restart application, reinstall update package."
+  },
+  {
+    "index_id": 6,
+    "doc_id": 7,
+    "source": "kb",
+    "title": "Application Freezing Frequently",
+    "category": "software",
+    "content": "Clear cache, update software, check system resources."
+  },
+  {
+    "index_id": 7,
+    "doc_id": 8,
+    "source": "kb",
+    "title": "File Not Opening in Application",
+    "category": "software",
+    "content": "Verify file format, update software, reinstall application."
+  },
+  {
+    "index_id": 8,
+    "doc_id": 9,
+    "source": "kb",
+    "title": "Error While Saving File",
+    "category": "software",
+    "content": "Check disk space, verify permissions, restart application."
+  },
+  {
+    "index_id": 9,
+    "doc_id": 10,
+    "source": "kb",
+    "title": "Plugin Not Working",
+    "category": "software",
+    "content": "Reinstall plugin, update application, check compatibility."
+  },
+  {
+    "index_id": 10,
+    "doc_id": 11,
+    "source": "kb",
+    "title": "Version Compatibility Issue",
+    "category": "software",
+    "content": "Upgrade/downgrade software version, check system requirements."
+  },
+  {
+    "index_id": 11,
+    "doc_id": 12,
+    "source": "kb",
+    "title": "Application Login Timeout",
+    "category": "software",
+    "content": "Check server response, restart app, verify credentials."
+  },
+  {
+    "index_id": 12,
+    "doc_id": 13,
+    "source": "kb",
+    "title": "Auto-Save Not Working",
+    "category": "software",
+    "content": "Enable auto-save settings, check disk permissions."
+  },
+  {
+    "index_id": 13,
+    "doc_id": 14,
+    "source": "kb",
+    "title": "Corrupted File Error",
+    "category": "software",
+    "content": "Restore backup, repair file using recovery tools."
+  },
+  {
+    "index_id": 14,
+    "doc_id": 15,
+    "source": "kb",
+    "title": "Mouse Not Detected",
+    "category": "hardware",
+    "content": "Reconnect mouse, change USB port, update drivers."
+  },
+  {
+    "index_id": 15,
+    "doc_id": 16,
+    "source": "kb",
+    "title": "System Random Shutdown",
+    "category": "hardware",
+    "content": "Check power supply, overheating, replace faulty hardware."
+  },
+  {
+    "index_id": 16,
+    "doc_id": 17,
+    "source": "kb",
+    "title": "Battery Not Charging",
+    "category": "hardware",
+    "content": "Check charger, replace battery, inspect charging port."
+  },
+  {
+    "index_id": 17,
+    "doc_id": 18,
+    "source": "kb",
+    "title": "Hard Disk Not Detected",
+    "category": "hardware",
+    "content": "Check SATA connection, BIOS settings, replace disk."
+  },
+  {
+    "index_id": 18,
+    "doc_id": 19,
+    "source": "kb",
+    "title": "USB Device Not Recognized",
+    "category": "hardware",
+    "content": "Reconnect device, update drivers, try different port."
+  },
+  {
+    "index_id": 19,
+    "doc_id": 20,
+    "source": "kb",
+    "title": "Fan Noise Issue",
+    "category": "hardware",
+    "content": "Clean dust, check fan alignment, replace if faulty."
+  },
+  {
+    "index_id": 20,
+    "doc_id": 21,
+    "source": "kb",
+    "title": "RAM Failure Issue",
+    "category": "hardware",
+    "content": "Reseat RAM, run memory diagnostics, replace module."
+  },
+  {
+    "index_id": 21,
+    "doc_id": 22,
+    "source": "kb",
+    "title": "Bluetooth Not Working",
+    "category": "hardware",
+    "content": "Enable Bluetooth, reinstall drivers, restart device."
+  },
+  {
+    "index_id": 22,
+    "doc_id": 23,
+    "source": "kb",
+    "title": "Touchpad Not Responding",
+    "category": "hardware",
+    "content": "Enable touchpad, update drivers, restart system."
+  },
+  {
+    "index_id": 23,
+    "doc_id": 24,
+    "source": "kb",
+    "title": "Camera Not Detected",
+    "category": "hardware",
+    "content": "Check drivers, enable camera settings, reinstall drivers."
+  },
+  {
+    "index_id": 24,
+    "doc_id": 25,
+    "source": "kb",
+    "title": "LAN Cable Not Working",
+    "category": "network",
+    "content": "Check cable, switch port, restart network device."
+  },
+  {
+    "index_id": 25,
+    "doc_id": 26,
+    "source": "kb",
+    "title": "IP Address Conflict",
+    "category": "network",
+    "content": "Release/renew IP, restart router, assign static IP."
+  },
+  {
+    "index_id": 26,
+    "doc_id": 27,
+    "source": "kb",
+    "title": "Network Dropping Frequently",
+    "category": "network",
+    "content": "Check signal strength, restart router, update firmware."
+  },
+  {
+    "index_id": 27,
+    "doc_id": 28,
+    "source": "kb",
+    "title": "Unable to Access Website",
+    "category": "network",
+    "content": "Check DNS, firewall settings, verify URL."
+  },
+  {
+    "index_id": 28,
+    "doc_id": 29,
+    "source": "kb",
+    "title": "Packet Loss Issue",
+    "category": "network",
+    "content": "Check network congestion, restart router, contact ISP."
+  },
+  {
+    "index_id": 29,
+    "doc_id": 30,
+    "source": "kb",
+    "title": "Port Not Accessible",
+    "category": "network",
+    "content": "Check firewall rules, open required port, restart service."
+  },
+  {
+    "index_id": 30,
+    "doc_id": 31,
+    "source": "kb",
+    "title": "VPN Disconnecting",
+    "category": "network",
+    "content": "Check internet stability, update VPN client."
+  },
+  {
+    "index_id": 31,
+    "doc_id": 32,
+    "source": "kb",
+    "title": "Router Not Responding",
+    "category": "network",
+    "content": "Restart router, reset settings, check power supply."
+  },
+  {
+    "index_id": 32,
+    "doc_id": 33,
+    "source": "kb",
+    "title": "Proxy Server Error",
+    "category": "network",
+    "content": "Check proxy settings, disable proxy if not needed."
+  },
+  {
+    "index_id": 33,
+    "doc_id": 34,
+    "source": "kb",
+    "title": "Network Authentication Failure",
+    "category": "network",
+    "content": "Verify credentials, reconnect network."
+  },
+  {
+    "index_id": 34,
+    "doc_id": 35,
+    "source": "kb",
+    "title": "Access Denied to Application",
+    "category": "access_permission",
+    "content": "Check role permissions, grant access rights."
+  },
+  {
+    "index_id": 35,
+    "doc_id": 36,
+    "source": "kb",
+    "title": "User Cannot Reset Password",
+    "category": "access_permission",
+    "content": "Check email delivery, resend reset link."
+  },
+  {
+    "index_id": 36,
+    "doc_id": 37,
+    "source": "kb",
+    "title": "Account Expired",
+    "category": "access_permission",
+    "content": "Renew account access, update user profile."
+  },
+  {
+    "index_id": 37,
+    "doc_id": 38,
+    "source": "kb",
+    "title": "Login Loop Issue",
+    "category": "access_permission",
+    "content": "Clear cookies, reset password, check session settings."
+  },
+  {
+    "index_id": 38,
+    "doc_id": 39,
+    "source": "kb",
+    "title": "Two-Factor Authentication Failure",
+    "category": "access_permission",
+    "content": "Resync device, reset MFA settings."
+  },
+  {
+    "index_id": 39,
+    "doc_id": 40,
+    "source": "kb",
+    "title": "User Role Misconfigured",
+    "category": "access_permission",
+    "content": "Assign correct role, update permissions."
+  },
+  {
+    "index_id": 40,
+    "doc_id": 41,
+    "source": "kb",
+    "title": "Unable to Access Dashboard",
+    "category": "access_permission",
+    "content": "Check permissions, verify login status."
+  },
+  {
+    "index_id": 41,
+    "doc_id": 42,
+    "source": "kb",
+    "title": "Session Expired Frequently",
+    "category": "access_permission",
+    "content": "Increase session timeout, check cookies."
+  },
+  {
+    "index_id": 42,
+    "doc_id": 43,
+    "source": "kb",
+    "title": "Access Revoked Error",
+    "category": "access_permission",
+    "content": "Reassign permissions, verify user status."
+  },
+  {
+    "index_id": 43,
+    "doc_id": 44,
+    "source": "kb",
+    "title": "User Not Found in System",
+    "category": "access_permission",
+    "content": "Check database entry, create user if missing."
+  },
+  {
+    "index_id": 44,
+    "doc_id": 45,
+    "source": "kb",
+    "title": "Multiple Failed Login Attempts",
+    "category": "security",
+    "content": "Lock account, notify user, enforce password reset."
+  },
+  {
+    "index_id": 45,
+    "doc_id": 46,
+    "source": "kb",
+    "title": "System Vulnerability Detected",
+    "category": "security",
+    "content": "Apply security patches, run vulnerability scan."
+  },
+  {
+    "index_id": 46,
+    "doc_id": 47,
+    "source": "kb",
+    "title": "Unauthorized File Access",
+    "category": "security",
+    "content": "Restrict permissions, audit logs."
+  },
+  {
+    "index_id": 47,
+    "doc_id": 48,
+    "source": "kb",
+    "title": "Security Certificate Expired",
+    "category": "security",
+    "content": "Renew SSL certificate, update configuration."
+  },
+  {
+    "index_id": 48,
+    "doc_id": 49,
+    "source": "kb",
+    "title": "Brute Force Attack Detected",
+    "category": "security",
+    "content": "Block IP, enable rate limiting."
+  },
+  {
+    "index_id": 49,
+    "doc_id": 50,
+    "source": "kb",
+    "title": "Data Breach Alert",
+    "category": "security",
+    "content": "Isolate system, notify security team, investigate logs."
+  },
+  {
+    "index_id": 50,
+    "doc_id": 51,
+    "source": "kb",
+    "title": "Firewall Misconfiguration",
+    "category": "security",
+    "content": "Review rules, correct settings."
+  },
+  {
+    "index_id": 51,
+    "doc_id": 52,
+    "source": "kb",
+    "title": "Suspicious File Download",
+    "category": "security",
+    "content": "Scan file, block source."
+  },
+  {
+    "index_id": 52,
+    "doc_id": 53,
+    "source": "kb",
+    "title": "Account Hijacking Suspected",
+    "category": "security",
+    "content": "Reset password, enable MFA."
+  },
+  {
+    "index_id": 53,
+    "doc_id": 54,
+    "source": "kb",
+    "title": "Encryption Failure Issue",
+    "category": "security",
+    "content": "Check encryption settings, reinstall certificates."
+  },
+  {
+    "index_id": 54,
+    "doc_id": 55,
+    "source": "kb",
+    "title": "Request for Account Upgrade",
+    "category": "other",
+    "content": "Verify eligibility, upgrade account plan."
+  },
+  {
+    "index_id": 55,
+    "doc_id": 56,
+    "source": "kb",
+    "title": "Service Downtime Inquiry",
+    "category": "other",
+    "content": "Check service status page, inform user."
+  },
+  {
+    "index_id": 56,
+    "doc_id": 57,
+    "source": "kb",
+    "title": "Feature Not Available",
+    "category": "other",
+    "content": "Inform user, log feature request."
+  },
+  {
+    "index_id": 57,
+    "doc_id": 58,
+    "source": "kb",
+    "title": "Training Request",
+    "category": "other",
+    "content": "Schedule training session, share materials."
+  },
+  {
+    "index_id": 58,
+    "doc_id": 59,
+    "source": "kb",
+    "title": "User Feedback Submission",
+    "category": "other",
+    "content": "Log feedback, forward to product team."
+  },
+  {
+    "index_id": 59,
+    "doc_id": 60,
+    "source": "kb",
+    "title": "Billing Discrepancy",
+    "category": "other",
+    "content": "Check invoice, verify charges."
+  },
+  {
+    "index_id": 60,
+    "doc_id": 61,
+    "source": "kb",
+    "title": "Refund Request",
+    "category": "other",
+    "content": "Verify transaction, initiate refund process."
+  },
+  {
+    "index_id": 61,
+    "doc_id": 62,
+    "source": "kb",
+    "title": "Service Activation Delay",
+    "category": "other",
+    "content": "Check backend process, escalate if needed."
+  },
+  {
+    "index_id": 62,
+    "doc_id": 63,
+    "source": "kb",
+    "title": "Documentation Request",
+    "category": "other",
+    "content": "Provide relevant documentation links."
+  },
+  {
+    "index_id": 63,
+    "doc_id": 64,
+    "source": "kb",
+    "title": "General Help Request",
+    "category": "other",
+    "content": "Provide support resources and FAQs."
+  },
+  {
+    "index_id": 64,
+    "doc_id": 65,
+    "source": "kb",
+    "title": "API Response Error",
+    "category": "software",
+    "content": "Check endpoint, verify API keys, restart service."
+  },
+  {
+    "index_id": 65,
+    "doc_id": 66,
+    "source": "kb",
+    "title": "Disk Space Full",
+    "category": "hardware",
+    "content": "Delete unnecessary files, extend storage."
+  },
+  {
+    "index_id": 66,
+    "doc_id": 67,
+    "source": "kb",
+    "title": "Cannot Connect to Server",
+    "category": "network",
+    "content": "Check network connectivity, restart server."
+  },
+  {
+    "index_id": 67,
+    "doc_id": 68,
+    "source": "kb",
+    "title": "User Cannot Upload Files",
+    "category": "access_permission",
+    "content": "Check permissions, verify file size limits."
+  },
+  {
+    "index_id": 68,
+    "doc_id": 69,
+    "source": "kb",
+    "title": "Security Alert Notification",
+    "category": "security",
+    "content": "Investigate logs, take corrective action."
+  },
+  {
+    "index_id": 69,
+    "doc_id": 70,
+    "source": "kb",
+    "title": "Payment Gateway Timeout",
+    "category": "software",
+    "content": "Check network, retry transaction."
+  },
+  {
+    "index_id": 70,
+    "doc_id": 71,
+    "source": "kb",
+    "title": "External Device Not Working",
+    "category": "hardware",
+    "content": "Reconnect device, install drivers."
+  },
+  {
+    "index_id": 71,
+    "doc_id": 72,
+    "source": "kb",
+    "title": "Remote Desktop Not Connecting",
+    "category": "network",
+    "content": "Check network, enable RDP settings."
+  },
+  {
+    "index_id": 72,
+    "doc_id": 73,
+    "source": "kb",
+    "title": "User Cannot Access Email",
+    "category": "access_permission",
+    "content": "Check credentials, reset password."
+  },
+  {
+    "index_id": 73,
+    "doc_id": 74,
+    "source": "kb",
+    "title": "Unauthorized API Access",
+    "category": "security",
+    "content": "Revoke API key, regenerate credentials."
+  },
+  {
+    "index_id": 74,
+    "doc_id": 75,
+    "source": "kb",
+    "title": "Application Update Loop",
+    "category": "software",
+    "content": "Clear update cache, restart app, reinstall latest version."
+  },
+  {
+    "index_id": 75,
+    "doc_id": 76,
+    "source": "kb",
+    "title": "Error Code 404 in App",
+    "category": "software    ",
+    "content": "Check endpoint URL, verify routing, restart service."
+  },
+  {
+    "index_id": 76,
+    "doc_id": 77,
+    "source": "kb",
+    "title": "Application Not Responding",
+    "category": "soft  ware",
+    "content": "Force close app, restart system, update software."
+  },
+  {
+    "index_id": 77,
+    "doc_id": 78,
+    "source": "kb",
+    "title": "Crash on Startup",
+    "category": "  software",
+    "content": "Check logs, reinstall app, update dependencies."
+  },
+  {
+    "index_id": 78,
+    "doc_id": 79,
+    "source": "kb",
+    "title": "Settings Not Saving",
+    "category": "software",
+    "content": "Check permissions, clear cache, restart application."
+  },
+  {
+    "index_id": 79,
+    "doc_id": 80,
+    "source": "kb",
+    "title": "Software License Expired",
+    "category": "software",
+    "content": "Renew license, update license key."
+  },
+  {
+    "index_id": 80,
+    "doc_id": 81,
+    "source": "kb",
+    "title": "API Integration Failure",
+    "category": "software",
+    "content": "Check API keys, verify endpoint, restart integration."
+  },
+  {
+    "index_id": 81,
+    "doc_id": 82,
+    "source": "kb",
+    "title": "File Upload Error",
+    "category": "software",
+    "content": "Check file size, format, server storage."
+  },
+  {
+    "index_id": 82,
+    "doc_id": 83,
+    "source": "kb",
+    "title": "Background Process Failure",
+    "category": "software",
+    "content": "Restart service, check logs, verify config."
+  },
+  {
+    "index_id": 83,
+    "doc_id": 84,
+    "source": "kb",
+    "title": "Data Sync Issue",
+    "category": "software",
+    "content": "Check connectivity, re-sync data, restart service."
+  },
+  {
+    "index_id": 84,
+    "doc_id": 85,
+    "source": "kb",
+    "title": "External Hard Drive Not Showing",
+    "category": "hardware",
+    "content": "Check connection, update drivers, assign drive letter."
+  },
+  {
+    "index_id": 85,
+    "doc_id": 86,
+    "source": "kb",
+    "title": "Speaker Not Working",
+    "category": "hardware",
+    "content": "Check volume settings, reinstall audio drivers."
+  },
+  {
+    "index_id": 86,
+    "doc_id": 87,
+    "source": "kb",
+    "title": "System Boot Failure",
+    "category": "hardware",
+    "content": "Check BIOS, boot order, repair OS."
+  },
+  {
+    "index_id": 87,
+    "doc_id": 88,
+    "source": "kb",
+    "title": "USB Port Not Working",
+    "category": "hardware",
+    "content": "Test with another device, update drivers."
+  },
+  {
+    "index_id": 88,
+    "doc_id": 89,
+    "source": "kb",
+    "title": "Screen Flickering Issue",
+    "category": "hardware",
+    "content": "Update display drivers, check cable."
+  },
+  {
+    "index_id": 89,
+    "doc_id": 90,
+    "source": "kb",
+    "title": "Battery Draining Fast",
+    "category": "hardware",
+    "content": "Close background apps, replace battery if needed."
+  },
+  {
+    "index_id": 90,
+    "doc_id": 91,
+    "source": "kb",
+    "title": "System Freezing Randomly",
+    "category": "hardware",
+    "content": "Check RAM, CPU usage, update drivers."
+  },
+  {
+    "index_id": 91,
+    "doc_id": 92,
+    "source": "kb",
+    "title": "Network Card Failure",
+    "category": "hardware",
+    "content": "Reinstall drivers, replace card if needed."
+  },
+  {
+    "index_id": 92,
+    "doc_id": 93,
+    "source": "kb",
+    "title": "Power Supply Failure",
+    "category": "hardware",
+    "content": "Check PSU, replace if faulty."
+  },
+  {
+    "index_id": 93,
+    "doc_id": 94,
+    "source": "kb",
+    "title": "Headphones Not Detected",
+    "category": "hardware",
+    "content": "Check jack, reinstall drivers."
+  },
+  {
+    "index_id": 94,
+    "doc_id": 95,
+    "source": "kb",
+    "title": "Unable to Ping Server",
+    "category": "network",
+    "content": "Check connectivity, firewall rules, server status."
+  },
+  {
+    "index_id": 95,
+    "doc_id": 96,
+    "source": "kb",
+    "title": "High Latency Issue",
+    "category": "network",
+    "content": "Check bandwidth usage, restart router."
+  },
+  {
+    "index_id": 96,
+    "doc_id": 97,
+    "source": "kb",
+    "title": "Router Firmware Issue",
+    "category": "network",
+    "content": "Update firmware, restart router."
+  },
+  {
+    "index_id": 97,
+    "doc_id": 98,
+    "source": "kb",
+    "title": "WiFi Signal Weak",
+    "category": "network",
+    "content": "Move closer to router, remove obstacles."
+  },
+  {
+    "index_id": 98,
+    "doc_id": 99,
+    "source": "kb",
+    "title": "Network Adapter Disabled",
+    "category": "network",
+    "content": "Enable adapter in settings, reinstall drivers."
+  },
+  {
+    "index_id": 99,
+    "doc_id": 100,
+    "source": "kb",
+    "title": "Cannot Access Shared Drive",
+    "category": "network",
+    "content": "Check network permissions, reconnect drive."
+  },
+  {
+    "index_id": 100,
+    "doc_id": 101,
+    "source": "kb",
+    "title": "Firewall Blocking Connection",
+    "category": "network",
+    "content": "Allow connection in firewall settings."
+  },
+  {
+    "index_id": 101,
+    "doc_id": 102,
+    "source": "kb",
+    "title": "VPN Authentication Error",
+    "category": "network",
+    "content": "Verify credentials, reset VPN profile."
+  },
+  {
+    "index_id": 102,
+    "doc_id": 103,
+    "source": "kb",
+    "title": "Network Loop Detected",
+    "category": "network",
+    "content": "Check switch configuration, disable loop."
+  },
+  {
+    "index_id": 103,
+    "doc_id": 104,
+    "source": "kb",
+    "title": "Gateway Not Reachable",
+    "category": "network",
+    "content": "Check router, restart network devices."
+  },
+  {
+    "index_id": 104,
+    "doc_id": 105,
+    "source": "kb",
+    "title": "User Cannot Access Email",
+    "category": "access_permission",
+    "content": "Verify login credentials, reset password."
+  },
+  {
+    "index_id": 105,
+    "doc_id": 106,
+    "source": "kb",
+    "title": "Account Disabled",
+    "category": "access_permission",
+    "content": "Enable account in admin panel."
+  },
+  {
+    "index_id": 106,
+    "doc_id": 107,
+    "source": "kb",
+    "title": "Access Token Expired",
+    "category": "access_permission",
+    "content": "Refresh token, re-login user."
+  },
+  {
+    "index_id": 107,
+    "doc_id": 108,
+    "source": "kb",
+    "title": "Invalid Credentials Error",
+    "category": "access_permission",
+    "content": "Reset password, verify username."
+  },
+  {
+    "index_id": 108,
+    "doc_id": 109,
+    "source": "kb",
+    "title": "User Locked Out of System",
+    "category": "access_permission",
+    "content": "Unlock account, reset password."
+  },
+  {
+    "index_id": 109,
+    "doc_id": 110,
+    "source": "kb",
+    "title": "Missing Role Permissions",
+    "category": "access_permission",
+    "content": "Assign correct role, update permissions."
+  },
+  {
+    "index_id": 110,
+    "doc_id": 111,
+    "source": "kb",
+    "title": "Login Redirect Loop",
+    "category": "access_permission",
+    "content": "Clear cookies, check session config."
+  },
+  {
+    "index_id": 111,
+    "doc_id": 112,
+    "source": "kb",
+    "title": "Unauthorized API Access",
+    "category": "access_permission",
+    "content": "Check API permissions, regenerate token."
+  },
+  {
+    "index_id": 112,
+    "doc_id": 113,
+    "source": "kb",
+    "title": "User Session Timeout",
+    "category": "access_permission",
+    "content": "Increase timeout, refresh session."
+  },
+  {
+    "index_id": 113,
+    "doc_id": 114,
+    "source": "kb",
+    "title": "Multi-User Access Conflict",
+    "category": "access_permission",
+    "content": "Check concurrent sessions, restrict access."
+  },
+  {
+    "index_id": 114,
+    "doc_id": 115,
+    "source": "kb",
+    "title": "Malicious Script Detected",
+    "category": "security",
+    "content": "Remove script, scan system, update security patches."
+  },
+  {
+    "index_id": 115,
+    "doc_id": 116,
+    "source": "kb",
+    "title": "Suspicious Network Activity",
+    "category": "security",
+    "content": "Analyze logs, block suspicious IP."
+  },
+  {
+    "index_id": 116,
+    "doc_id": 117,
+    "source": "kb",
+    "title": "Account Brute Force Attempt",
+    "category": "security",
+    "content": "Lock account, enable MFA."
+  },
+  {
+    "index_id": 117,
+    "doc_id": 118,
+    "source": "kb",
+    "title": "Data Leak Suspected",
+    "category": "security",
+    "content": "Investigate logs, secure data access."
+  },
+  {
+    "index_id": 118,
+    "doc_id": 119,
+    "source": "kb",
+    "title": "Expired Security Token",
+    "category": "security",
+    "content": "Generate new token, update authentication."
+  },
+  {
+    "index_id": 119,
+    "doc_id": 120,
+    "source": "kb",
+    "title": "Unauthorized Database Access",
+    "category": "security",
+    "content": "Restrict DB access, review logs."
+  },
+  {
+    "index_id": 120,
+    "doc_id": 121,
+    "source": "kb",
+    "title": "SSL Handshake Failure",
+    "category": "security",
+    "content": "Update certificates, check SSL config."
+  },
+  {
+    "index_id": 121,
+    "doc_id": 122,
+    "source": "kb",
+    "title": "Security Patch Missing",
+    "category": "security",
+    "content": "Apply latest patches, restart system."
+  },
+  {
+    "index_id": 122,
+    "doc_id": 123,
+    "source": "kb",
+    "title": "Phishing Attempt Detected",
+    "category": "security",
+    "content": "Block sender, notify users."
+  },
+  {
+    "index_id": 123,
+    "doc_id": 124,
+    "source": "kb",
+    "title": "Suspicious Login Location",
+    "category": "security",
+    "content": "Verify user, reset credentials."
+  },
+  {
+    "index_id": 124,
+    "doc_id": 125,
+    "source": "kb",
+    "title": "Service Request Delay",
+    "category": "other",
+    "content": "Check queue, escalate if needed."
+  },
+  {
+    "index_id": 125,
+    "doc_id": 126,
+    "source": "kb",
+    "title": "Request for Data Export",
+    "category": "other",
+    "content": "Verify request, generate export file."
+  },
+  {
+    "index_id": 126,
+    "doc_id": 127,
+    "source": "kb",
+    "title": "Subscription Upgrade Query",
+    "category": "other",
+    "content": "Provide plan details, upgrade account."
+  },
+  {
+    "index_id": 127,
+    "doc_id": 128,
+    "source": "kb",
+    "title": "User Complaint Handling",
+    "category": "other",
+    "content": "Log complaint, assign to support team."
+  },
+  {
+    "index_id": 128,
+    "doc_id": 129,
+    "source": "kb",
+    "title": "Training Material Request",
+    "category": "other",
+    "content": "Share documentation, schedule session."
+  },
+  {
+    "index_id": 129,
+    "doc_id": 130,
+    "source": "kb",
+    "title": "System Usage Inquiry",
+    "category": "other",
+    "content": "Provide usage guide, share tutorials."
+  },
+  {
+    "index_id": 130,
+    "doc_id": 131,
+    "source": "kb",
+    "title": "Billing Cycle Clarification",
+    "category": "other",
+    "content": "Explain billing cycle, share invoice."
+  },
+  {
+    "index_id": 131,
+    "doc_id": 132,
+    "source": "kb",
+    "title": "Account Deletion Request",
+    "category": "other",
+    "content": "Verify identity, process deletion."
+  },
+  {
+    "index_id": 132,
+    "doc_id": 133,
+    "source": "kb",
+    "title": "Support Escalation Request",
+    "category": "other",
+    "content": "Escalate ticket to higher level."
+  },
+  {
+    "index_id": 133,
+    "doc_id": 134,
+    "source": "kb",
+    "title": "Product Demo Request",
+    "category": "other",
+    "content": "Schedule demo session."
+  },
+  {
+    "index_id": 134,
+    "doc_id": 135,
+    "source": "kb",
+    "title": "Email Delivery Failure",
+    "category": "software",
+    "content": "Check SMTP server, verify email config."
+  },
+  {
+    "index_id": 135,
+    "doc_id": 136,
+    "source": "kb",
+    "title": "Disk Read Error",
+    "category": "hardware",
+    "content": "Run disk check, replace faulty disk."
+  },
+  {
+    "index_id": 136,
+    "doc_id": 137,
+    "source": "kb",
+    "title": "Server Not Reachable",
+    "category": "network",
+    "content": "Check network, restart server."
+  },
+  {
+    "index_id": 137,
+    "doc_id": 138,
+    "source": "kb",
+    "title": "User Cannot Download Files",
+    "category": "access_permission",
+    "content": "Check permissions, verify network."
+  },
+  {
+    "index_id": 138,
+    "doc_id": 139,
+    "source": "kb",
+    "title": "Unauthorized Access Alert",
+    "category": "security",
+    "content": "Block user, review logs."
+  },
+  {
+    "index_id": 139,
+    "doc_id": 140,
+    "source": "kb",
+    "title": "Application Timeout Error",
+    "category": "software",
+    "content": "Increase timeout, check server load."
+  },
+  {
+    "index_id": 140,
+    "doc_id": 141,
+    "source": "kb",
+    "title": "Peripheral Device Failure",
+    "category": "hardware",
+    "content": "Reconnect device, update drivers."
+  },
+  {
+    "index_id": 141,
+    "doc_id": 142,
+    "source": "kb",
+    "title": "Network Bandwidth Limit Exceeded",
+    "category": "network",
+    "content": "Monitor usage, upgrade plan."
+  },
+  {
+    "index_id": 142,
+    "doc_id": 143,
+    "source": "kb",
+    "title": "Access Denied for API",
+    "category": "access_permission",
+    "content": "Check permissions, update API key."
+  },
+  {
+    "index_id": 143,
+    "doc_id": 144,
+    "source": "kb",
+    "title": "Security Breach Attempt",
+    "category": "security",
+    "content": "Isolate system, investigate logs."
   }
 ]

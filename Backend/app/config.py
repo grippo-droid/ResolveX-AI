@@ -28,8 +28,10 @@ class Settings(BaseSettings):
     @property
     def DATABASE_URL(self) -> str:
         """Build the asyncpg-compatible PostgreSQL DSN from RDS fields."""
+        import urllib.parse
+        quoted_password = urllib.parse.quote_plus(self.RDS_PASSWORD)
         return (
-            f"postgresql+psycopg2://{self.RDS_USER}:{self.RDS_PASSWORD}"
+            f"postgresql+psycopg2://{self.RDS_USER}:{quoted_password}"
             f"@{self.RDS_HOST}:{self.RDS_PORT}/{self.RDS_DB}"
         )
 

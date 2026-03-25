@@ -116,6 +116,33 @@ export async function getTicketById(ticketId: number): Promise<TicketAPIResponse
   return res.json();
 }
 
+// ── Get Ticket Pipeline (GET /tickets/:id/pipeline) ─────────────────────────
+
+export interface PipelineStep {
+  key: string;
+  label: string;
+  state: "completed" | "active" | "pending" | "failed";
+  timestamp?: string | null;
+  details?: Record<string, any> | null;
+}
+
+export interface TicketPipelineTracker {
+  ticket_id: number;
+  current_step: string;
+  steps: PipelineStep[];
+}
+
+export async function getTicketPipeline(ticketId: number): Promise<TicketPipelineTracker> {
+  const res = await fetch(`${BASE_URL}/api/v1/tickets/${ticketId}/pipeline`);
+
+  if (!res.ok) {
+    const error = await res.json().catch(() => ({ detail: "Unknown error" }));
+    throw new Error(error.detail ?? `HTTP ${res.status}`);
+  }
+
+  return res.json();
+}
+
 // ── Update Ticket (PATCH /tickets/:id) ────────────────────────────────────
 
 export async function updateTicket(
@@ -176,5 +203,58 @@ export async function resolveTicket(
     throw new Error(error.detail ?? `HTTP ${res.status}`);
   }
 
+  return res.json();
+}
+
+// ── Analytics API ──────────────────────────────────────────────────────────
+
+export interface TicketStats {
+  total_tickets: number;
+  open_tickets: number;
+  auto_resolved: number;
+  escalated: number;
+  closed: number;
+}
+
+export interface ConfidenceStats {
+  avg_confidence: number;
+  high_confidence_count: number;
+  low_confidence_count: number;
+}
+
+export interface CategoryBreakdown {
+  category_counts: Record<string, number>;
+}
+
+export interface AnalyticsSummary {
+  ticket_stats: TicketStats;
+  confidence_stats: ConfidenceStats;
+  category_breakdown: CategoryBreakdown;
+}
+
+export async function getAnalyticsSummary(): Promise<AnalyticsSummary> {
+  const res = await fetch(`${BASE_URL}/api/v1/analytics`);
+  if (!res.ok) {
+    const error = await res.json().catch(() => ({ detail: "Unknown error" }));
+    throw new Error(error.detail ?? `HTTP ${res.status}`);
+  }
+  return res.json();
+}
+
+export async function getTicketStats(): Promise<TicketStats> {
+  const res = await fetch(`${BASE_URL}/api/v1/analytics/tickets`);
+  if (!res.ok) {
+    const error = await res.json().catch(() => ({ detail: "Unknown error" }));
+    throw new Error(error.detail ?? `HTTP ${res.status}`);
+  }
+  return res.json();
+}
+
+export async function getConfidenceStats(): Promise<ConfidenceStats> {
+  const res = await fetch(`${BASE_URL}/api/v1/analytics/confidence`);
+  if (!res.ok) {
+    const error = await res.json().catch(() => ({ detail: "Unknown error" }));
+    throw new Error(error.detail ?? `HTTP ${res.status}`);
+  }
   return res.json();
 }

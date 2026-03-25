@@ -46,6 +46,13 @@ class Ticket(Base):
     # Metadata
     submitted_by = Column(String(255), nullable=True)      # user email / id
     assigned_to = Column(String(255), nullable=True)       # human agent (HITL)
+    
+    # Expert Resolver Assignment fields
+    assigned_resolver_id = Column(String(50), nullable=True)
+    assigned_resolver_name = Column(String(100), nullable=True)
+    assigned_resolver_category = Column(String(100), nullable=True)
+    assigned_at = Column(DateTime(timezone=True), nullable=True)
+
     attachment_paths = Column(Text, nullable=True)         # comma-separated file paths
 
     created_at = Column(DateTime(timezone=True), server_default=func.now())

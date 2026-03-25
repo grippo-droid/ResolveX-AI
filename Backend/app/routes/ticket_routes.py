@@ -17,7 +17,7 @@ from app.services.resolution_service import ResolutionService
 logger = logging.getLogger("resolvex")
 
 from app.database import get_db
-from app.schemas.ticket_schema import TicketResponse, TicketListResponse, TicketUpdate
+from app.schemas.ticket_schema import TicketResponse, TicketListResponse, TicketUpdate, TicketPipelineTracker
 from app.services.ticket_service import TicketService
 
 router = APIRouter()
@@ -104,6 +104,86 @@ def get_ticket(ticket_id: int, db: Session = Depends(get_db)):
     """Fetch a single ticket by ID."""
     service = TicketService(db)
     return service.get_ticket(ticket_id)
+
+
+@router.get("/tickets/{ticket_id}/pipeline", response_model=TicketPipelineTracker)
+def get_ticket_pipeline(ticket_id: int, db: Session = Depends(get_db)):
+    """Returns the visual ticket progression steps mapped from standard ticket properties."""
+    service = TicketService(db)
+    ticket = service.get_ticket(ticket_id)
+    
+    # Analyze state
+    steps = [{
+        "key": "created",
+        "label": "Ticket Created",
+        "state": "completed",
+        "timestamp": ticket.created_at.isoformat() if ticket.created_at else None,
+        "details": None
+    }]
+    
+    has_ai = ticket.confidence is not None
+    
+    steps.append({
+        "key": "extracted",
+        "label": "Context Extracted",
+        "state": "completed" if has_ai else ("active" if ticket.status == "open" else "pending"),
+        "timestamp": ticket.updated_at.isoformat() if has_ai and ticket.updated_at else None,
+        "details": None
+    })
+    
+    steps.append({
+        "key": "classified",
+        "label": "AI Classification",
+        "state": "completed" if has_ai else "pending",
+        "timestamp": None,
+        "details": {"predicted_category": ticket.category} if has_ai else None
+    })
+    
+
+    steps.append({
+        "key": "solution",
+        "label": "AI Resolution Ready",
+        "state": "completed" if has_ai else "pending",
+        "timestamp": None,
+        "details": {"confidence_score": ticket.confidence} if has_ai else None
+    })
+    
+    decision_state = "pending"
+    decision_details = None
+    if ticket.status == "auto_resolved":
+        decision_state = "completed"
+        decision_details = {"decision": "Auto-Resolved by AI"}
+    elif ticket.status == "escalated":
+        decision_state = "active"
+        decision_details = {"decision": "Pending Human Expert Review", "assigned_to": ticket.assigned_resolver_name}
+    elif ticket.status == "closed" and has_ai:
+        decision_state = "completed"
+        decision_details = {"decision": "Resolved"}
+        
+    steps.append({
+        "key": "decision",
+        "label": "Decision / Review",
+        "state": decision_state,
+        "timestamp": None,
+        "details": decision_details
+    })
+    
+    steps.append({
+        "key": "closed",
+        "label": "Closed",
+        "state": "completed" if ticket.status == "closed" else "pending",
+        "timestamp": ticket.updated_at.isoformat() if ticket.status == "closed" and ticket.updated_at else None,
+        "details": None
+    })
+    
+    current_step = next((s["key"] for s in steps if s["state"] == "active"), 
+                       "closed" if ticket.status == "closed" else "decision")
+                       
+    return TicketPipelineTracker(
+        ticket_id=ticket.id,
+        current_step=current_step,
+        steps=steps
+    )
 
 
 @router.patch("/tickets/{ticket_id}", response_model=TicketResponse)

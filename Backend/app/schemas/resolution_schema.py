@@ -21,6 +21,9 @@ class ResolutionResult(BaseModel):
     auto_resolved: bool
     escalated_to_human: bool
     explanation: Optional[str] = None
+    assigned_resolver_id: Optional[str] = None
+    assigned_resolver_name: Optional[str] = None
+    assigned_resolver_category: Optional[str] = None
 
 
 class HITLReviewRequest(BaseModel):
