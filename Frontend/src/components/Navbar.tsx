@@ -1,12 +1,14 @@
 import { useState, useEffect } from "react";
 
+import React from "react";
+
 interface NavbarProps {
   sidebarOpen: boolean;
   onSidebarToggle: () => void;
   activeLabel: string;        // ← added
 }
 
-export default function Navbar({ sidebarOpen, onSidebarToggle, activeLabel }: NavbarProps) {
+const Navbar: React.FC<NavbarProps> = ({ sidebarOpen, onSidebarToggle, activeLabel }) => {
   const [scrolled, setScrolled] = useState(false);
 
   useEffect(() => {
@@ -70,4 +72,6 @@ export default function Navbar({ sidebarOpen, onSidebarToggle, activeLabel }: Na
       </div>
     </header>
   );
-}
+};
+
+export default React.memo(Navbar);

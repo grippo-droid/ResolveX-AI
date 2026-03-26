@@ -1,4 +1,4 @@
-import { useEffect, useCallback, useState } from "react";
+import React, { useEffect, useCallback, useState } from "react";
 import { Icons } from "./SidebarIcons";
 
 // ── Types ──────────────────────────────────────────────────────────────────
@@ -102,13 +102,13 @@ function NavRow({ item, isOpen, isActive, onClick }: {
 }
 
 // ── Main Sidebar ───────────────────────────────────────────────────────────
-export default function Sidebar({
+const Sidebar: React.FC<SidebarProps> = ({
   isOpen,
   onToggle,
   activeId,
   onActiveChange,
   badgeCounts = {},
-}: SidebarProps) {
+}) => {
 
   // Keyboard shortcut: [ to toggle sidebar
   const handleKey = useCallback((e: KeyboardEvent) => {
@@ -264,4 +264,6 @@ export default function Sidebar({
       </aside>
     </>
   );
-}
+};
+
+export default React.memo(Sidebar);
