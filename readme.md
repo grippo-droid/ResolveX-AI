@@ -4,6 +4,7 @@
 **Intelligent Auto-Handling of Support Tickets with Confidence-Based Human-in-the-Loop**
 
 > 🔥 **LIVE DEPLOYMENT:** [ResolveX-AI.live](http://18.208.156.103) <br/>
+**Finalist Demo Video Link:** [https://youtu.be/QMl_igWXLVM](https://youtu.be/QMl_igWXLVM) <br/>
 > *Experience the real-time AI resolution engine live in production.*
 
 </div>
