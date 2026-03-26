@@ -39,8 +39,59 @@ export default function AuditLogs() {
   const [pipeline, setPipeline] = useState<TicketPipelineTracker | null>(null);
   const [loadingPipeline, setLoadingPipeline] = useState(false);
 
-  // Load recent tickets
+  // ── Establish WebSocket Connection ──
   useEffect(() => {
+    // Determine WS URL based on API base (assuming http://localhost:8000/api -> ws://localhost:8000/api/v1/ws/live)
+    const wsUrl = "ws://localhost:8000/api/v1/ws/live";
+    const ws = new WebSocket(wsUrl);
+
+    ws.onopen = () => console.log("✅ WebSocket connected");
+    ws.onmessage = (event) => {
+      try {
+        const data = JSON.parse(event.data);
+        if (data.event === "TICKET_UPDATED") {
+          
+          // 1. Refresh global list to catch new tickets or top-level updates
+          getTickets(1, 15).then(res => setTickets(res.tickets)).catch(console.error);
+
+          // 2. Granularly update the timeline if the event is for the currently viewed ticket
+          if (selectedId && data.ticket_id === selectedId && data.step) {
+            setPipeline(prev => {
+              if (!prev) return prev;
+              const newSteps = prev.steps.map(s => {
+                // Mark incoming step as completed, wait for next
+                if (s.key === data.step) return { ...s, state: "completed" as "completed", timestamp: new Date().toISOString() };
+                // If it's a future step, keep it pending
+                return s;
+              });
+
+              // Special logic: if 'classified', AI extract is done
+              if (data.step === "classified") {
+                const ex = newSteps.find(x => x.key === "extracted");
+                if (ex) ex.state = "completed" as "completed";
+              }
+
+              return {
+                ...prev,
+                current_step: data.step,
+                steps: newSteps,
+              };
+            });
+          }
+        }
+      } catch (err) {
+        console.error("WS Parse error", err);
+      }
+    };
+
+    return () => {
+      ws.close();
+    };
+  }, [selectedId]);
+
+  // Load recent tickets ONCE initially (WS handles subsequent updates)
+  useEffect(() => {
+    setLoadingList(true);
     getTickets(1, 15)
       .then(res => {
         setTickets(res.tickets);
@@ -49,7 +100,7 @@ export default function AuditLogs() {
       .finally(() => setLoadingList(false));
   }, []);
 
-  // Load pipeline when ticket selected
+  // Load full pipeline from scratch when a DIFFERENT ticket is selected manually
   useEffect(() => {
     if (!selectedId) return;
     setLoadingPipeline(true);

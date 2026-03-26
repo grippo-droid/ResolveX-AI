@@ -13,7 +13,7 @@ from app.config import settings
 from app.database import init_db
 from app.core.logger import logger
 from app.core.exceptions import ResolveXException
-from app.routes import ticket_routes, resolution_routes, analytics_routes, health_routes
+from app.routes import ticket_routes, resolution_routes, analytics_routes, health_routes, ws_routes
 
 
 # ── Lifespan (startup / shutdown) ────────────────────────────────────────────
@@ -75,3 +75,4 @@ app.include_router(health_routes.router,     prefix=API_PREFIX, tags=["Health"])
 app.include_router(ticket_routes.router,     prefix=API_PREFIX, tags=["Tickets"])
 app.include_router(resolution_routes.router, prefix=API_PREFIX, tags=["Resolution"])
 app.include_router(analytics_routes.router,  prefix=API_PREFIX, tags=["Analytics"])
+app.include_router(ws_routes.router,         prefix=f"{API_PREFIX}/ws", tags=["WebSockets"])

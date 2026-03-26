@@ -13,6 +13,8 @@ from app.core.logger import logger
 from app.core.expert_resolvers import get_best_expert_resolver
 from ai.pipeline.ticket_pipeline import run_pipeline
 from datetime import datetime, timezone
+import asyncio
+from app.core.websocket import manager
 
 
 class ResolutionService:
@@ -37,6 +39,9 @@ class ResolutionService:
             return self._build_result(ticket)
 
         logger.info(f"Running AI pipeline for ticket {ticket_id}")
+        await manager.broadcast({"event": "TICKET_UPDATED", "ticket_id": ticket_id, "step": "extracted"})
+        await asyncio.sleep(1.2) # Artificial delay to demonstrate real-time UX to the user
+        await manager.broadcast({"event": "TICKET_UPDATED", "ticket_id": ticket_id, "step": "classified"})
 
         # ── Run AI pipeline ────────────────────────────────────────────────────
         pipeline_output = await run_pipeline(ticket)
@@ -69,6 +74,11 @@ class ResolutionService:
         ticket.explanation = explanation
         ticket.status = new_status
         self.repo.update(ticket)
+        
+        # Broadcast final resolution ready and decision
+        await manager.broadcast({"event": "TICKET_UPDATED", "ticket_id": ticket_id, "step": "solution"})
+        await asyncio.sleep(0.8)
+        await manager.broadcast({"event": "TICKET_UPDATED", "ticket_id": ticket_id, "step": "decision"})
 
         logger.info(f"Ticket {ticket_id} → status={new_status}, confidence={confidence:.3f}")
 

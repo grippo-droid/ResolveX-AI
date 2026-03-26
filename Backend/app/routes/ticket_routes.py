@@ -9,18 +9,29 @@ Routes:
     DELETE /tickets/{id}     → soft-delete / close a ticket
 """
 
-from fastapi import APIRouter, Depends, UploadFile, File, Form, Query
+from fastapi import APIRouter, Depends, UploadFile, File, Form, Query, BackgroundTasks
 from sqlalchemy.orm import Session
 from typing import List, Optional
 import logging
 from app.services.resolution_service import ResolutionService
 logger = logging.getLogger("resolvex")
 
-from app.database import get_db
+from app.database import get_db, SessionLocal
 from app.schemas.ticket_schema import TicketResponse, TicketListResponse, TicketUpdate, TicketPipelineTracker
 from app.services.ticket_service import TicketService
 
 router = APIRouter()
+
+async def background_resolve_task(ticket_id: int):
+    """Background wrapper providing a fresh DB session for the async AI pipeline."""
+    db = SessionLocal()
+    try:
+        resolution_service = ResolutionService(db)
+        await resolution_service.resolve(ticket_id=ticket_id, force=False)
+    except Exception as e:
+        logger.error(f"Error in background AI resolution for ticket {ticket_id}: {e}")
+    finally:
+        db.close()
 
 
 @router.post("/tickets", response_model=TicketResponse, status_code=201)
@@ -29,12 +40,13 @@ async def create_ticket(
     description:  str                  = Form(...),
     submitted_by: Optional[str]        = Form(None),
     category:     str                  = Form(...),
+    background_tasks: BackgroundTasks  = None,
     image:        Optional[UploadFile] = File(None),
     db:           Session              = Depends(get_db),
 ):
     """
-    Submit a new support ticket AND auto-trigger AI resolution pipeline.
-    Returns merged ticket + AI result in one response.
+    Submit a new support ticket AND auto-trigger AI resolution pipeline via BackgroundTasks.
+    Returns the initial ticket state (Open). The pipeline steps are broadcast via WebSockets.
     """
     # Step 1: Create ticket in DB
     ticket_service = TicketService(db)
@@ -46,47 +58,23 @@ async def create_ticket(
         image=image,
     )
 
-    # Step 2: Auto-trigger AI resolution
-    resolution_service = ResolutionService(db)
-    resolution = await resolution_service.resolve(ticket_id=ticket.id, force=False)
+    # Step 2: Trigger async background resolution
+    background_tasks.add_task(background_resolve_task, ticket.id)
 
-    # Step 3: Map decision from resolution booleans
-    if resolution.auto_resolved:
-        decision = "auto-resolved"
-    elif resolution.escalated_to_human:
-        decision = "escalated"
-    else:
-        decision = "human-review"
-
-    # Step 4: Map confidence % to frontend format
-    confidence_percent = round(resolution.confidence * 100) if resolution.confidence <= 1 else round(resolution.confidence)
-
-    # Step 5: Build merged response
+    # Return immediate TicketResponse (Pending AI)
     return TicketResponse(
-        # Core ticket fields
         id=ticket.id,
         title=ticket.title,
         description=ticket.description,
-        category=resolution.category or ticket.category,
+        category=ticket.category,
         status=ticket.status,
         submitted_by=ticket.submitted_by,
         assigned_to=ticket.assigned_to,
         created_at=ticket.created_at,
         updated_at=ticket.updated_at,
-
-        # AI resolution fields — mapped from ResolutionResult
-        solution=resolution.solution,
-        suggested_fix=resolution.solution,
-        confidence=confidence_percent,
-        explanation=resolution.explanation,
-        decision=decision,
-        intent=resolution.category,        # category = intent in your schema
-        processing_time=None,              # not in ResolutionResult, add later if needed
-        assigned_resolver_id=resolution.assigned_resolver_id,
-        assigned_resolver_name=resolution.assigned_resolver_name,
-        assigned_resolver_category=resolution.assigned_resolver_category,
-    )   
-
+        decision="pending",
+        intent=None,
+    )
 
 
 @router.get("/tickets", response_model=TicketListResponse)
