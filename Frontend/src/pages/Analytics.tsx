@@ -69,17 +69,16 @@ export default function Analytics() {
   const conf = data.confidence_stats;
   const cats = data.category_breakdown.category_counts;
 
-  const autoResolvable = stats.auto_resolved;
-  const autoResolvedPercent = stats.total_tickets > 0 ? Math.round((autoResolvable / stats.total_tickets) * 100) : 0;
+  const totalClosed = stats.auto_resolved + stats.closed;
+  const closedPercent = stats.total_tickets > 0 ? Math.round((totalClosed / stats.total_tickets) * 100) : 0;
   const escalatedPercent = stats.total_tickets > 0 ? Math.round((stats.escalated / stats.total_tickets) * 100) : 0;
   const confAvg = toPercent(conf.avg_confidence);
 
   // Format data for Recharts
   const statusChartData = [
-    { name: 'Open', value: stats.open_tickets, color: STATUS_COLORS.open },
+    { name: 'In Progress', value: stats.open_tickets, color: '#b45309' },
     { name: 'Escalated', value: stats.escalated, color: STATUS_COLORS.escalated },
-    { name: 'Auto-Resolved', value: stats.auto_resolved, color: STATUS_COLORS.auto_resolved },
-    { name: 'Closed', value: stats.closed, color: STATUS_COLORS.closed },
+    { name: 'Closed', value: totalClosed, color: STATUS_COLORS.auto_resolved },
   ].filter(d => d.value > 0);
 
   const categoryChartData = Object.entries(cats || {}).map(([name, value]) => ({
@@ -155,18 +154,18 @@ export default function Analytics() {
           <div className="glass-card p-4 sm:p-6 rounded-[24px] shadow-[0_8px_30px_rgb(0,0,0,0.03)] hover:-translate-y-1.5 transition-all duration-300 relative overflow-hidden group">
             <div className="absolute top-0 right-0 w-32 h-32 bg-black/[0.02] rounded-bl-full transition-transform group-hover:scale-110" />
             <div className="flex items-center justify-between mb-6 relative">
-              <span className="text-[12px] font-bold uppercase tracking-[1.2px] text-[#6B6B6B]">Auto-Resolved</span>
+              <span className="text-[12px] font-bold uppercase tracking-[1.2px] text-[#6B6B6B]">Closed Tickets</span>
               <div className="w-10 h-10 bg-[#f0fdf4] border border-[#bbf7d0] rounded-xl flex items-center justify-center">
-                <Zap className="w-5 h-5 text-[#15803D]" />
+                <CheckCircle2 className="w-5 h-5 text-[#15803D]" />
               </div>
             </div>
             <div className="relative">
-              <p className="text-[42px] font-black text-[#0A0A0A] leading-none tracking-tight mb-2">{autoResolvable}</p>
+              <p className="text-[42px] font-black text-[#0A0A0A] leading-none tracking-tight mb-2">{totalClosed}</p>
               <div className="flex items-center gap-2 mt-3">
                 <div className="flex-1 bg-black/5 h-1.5 rounded-full overflow-hidden">
-                  <div className="h-full bg-[#15803D] rounded-full" style={{ width: `${autoResolvedPercent}%` }} />
+                  <div className="h-full bg-[#15803D] rounded-full" style={{ width: `${closedPercent}%` }} />
                 </div>
-                <span className="text-[12px] font-bold text-[#15803D]">{autoResolvedPercent}%</span>
+                <span className="text-[12px] font-bold text-[#15803D]">{closedPercent}%</span>
               </div>
             </div>
           </div>
@@ -344,11 +343,11 @@ export default function Analytics() {
             <div className="flex flex-col gap-5 mt-2">
               <div>
                 <div className="flex items-center justify-between mb-2">
-                  <span className="text-[13px] font-semibold text-[#6B6B6B]">Auto-Resolution Rate</span>
-                  <span className="text-[14px] font-bold text-[#15803D]">{autoResolvedPercent}%</span>
+                  <span className="text-[13px] font-semibold text-[#6B6B6B]">Closed Rate</span>
+                  <span className="text-[14px] font-bold text-[#15803D]">{closedPercent}%</span>
                 </div>
                 <div className="w-full h-2.5 bg-black/5 rounded-full overflow-hidden">
-                  <div className="h-full bg-[#15803D] rounded-full" style={{ width: `${autoResolvedPercent}%` }} />
+                  <div className="h-full bg-[#15803D] rounded-full" style={{ width: `${closedPercent}%` }} />
                 </div>
               </div>
 
@@ -365,7 +364,7 @@ export default function Analytics() {
               <div className="mt-4 pt-5 border-t border-black/5 flex items-start gap-3">
                 <Lightbulb className="w-5 h-5 text-[#2563EB] shrink-0 mt-0.5" />
                 <p className="text-[13px] text-[#6B6B6B] leading-relaxed">
-                  The system is currently auto-resolving {autoResolvedPercent}% of all incoming requests without human intervention, significantly lowering manual support time.
+                  Overall, {closedPercent}% of all incoming requests have been closed (including auto-resolutions), significantly lowering manual support time.
                 </p>
               </div>
             </div>
