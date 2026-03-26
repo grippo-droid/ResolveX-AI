@@ -59,10 +59,10 @@ export default function AuditLogs() {
   }, [selectedId]);
 
   return (
-    <div className="flex h-full gap-6 max-w-[1400px] mx-auto overflow-hidden">
+    <div className="flex flex-col md:flex-row h-full gap-4 md:gap-6 max-w-[1400px] mx-auto overflow-hidden">
 
       {/* ── Left Sidebar: Recent Tickets ── */}
-      <div className="w-[320px] shrink-0 flex flex-col bg-white rounded-2xl border border-black/[0.06] shadow-sm overflow-hidden h-full">
+      <div className="w-full md:w-[320px] shrink-0 flex flex-col bg-white rounded-2xl border border-black/[0.06] shadow-sm overflow-hidden h-64 md:h-full">
         <div className="p-5 border-b border-black/[0.06] bg-[#FAFAFA]">
           <h2 className="text-[16px] font-bold text-[#0A0A0A] mb-1">Audit Logs & Processing</h2>
           <p className="text-[12px] text-[#6B6B6B]">Select a ticket to trace its AI pipeline timeline.</p>
@@ -123,9 +123,9 @@ export default function AuditLogs() {
             <p className="text-[13px] font-medium text-[#6B6B6B]">Loading trace data...</p>
           </div>
         ) : (
-          <div className="flex-1 overflow-y-auto px-10 py-12 flex flex-col">
+          <div className="flex-1 overflow-y-auto px-4 sm:px-10 py-8 sm:py-12 flex flex-col">
 
-            <div className="mb-14">
+            <div className="mb-8 sm:mb-14">
               <div className="inline-flex items-center gap-2 mb-3 bg-[#FF4D00]/5 border border-[#FF4D00]/20 text-[#FF4D00] px-3 py-1 rounded-full text-[11px] font-bold tracking-wide uppercase">
                 <Zap className="w-3.5 h-3.5 fill-current" /> Auto-Trace Pipeline
               </div>
@@ -225,7 +225,7 @@ export default function AuditLogs() {
             </div>
 
             {/* ── Status Banner ── */}
-            <div className="mt-auto bg-[#F9F9F9] rounded-2xl border border-black/[0.06] p-6 flex items-start gap-4">
+            <div className="mt-auto bg-[#F9F9F9] rounded-2xl border border-black/[0.06] p-4 sm:p-6 flex flex-col sm:flex-row items-start sm:items-center gap-4">
               {pipeline.current_step === "closed" ? (
                 <BadgeCheck className="w-8 h-8 text-[#15803D] shrink-0 fill-[#15803D]/20" />
               ) : pipeline.current_step === "decision" ? (

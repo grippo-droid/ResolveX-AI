@@ -100,7 +100,7 @@ interface StatItemProps { value: number; suffix: string; label: string; animate:
 function StatItem({ value, suffix, label, animate }: StatItemProps) {
   const count = useCounter(value, 1800, animate);
   return (
-    <div className="flex flex-col items-center gap-1 px-10 py-5 border-r border-black/10 last:border-r-0">
+    <div className="flex flex-col items-center gap-1 px-6 sm:px-10 py-5 border-r border-black/10 last:border-r-0">
       <span className="text-3xl font-extrabold tracking-tight text-[#0A0A0A]">
         {count}{suffix}
       </span>
@@ -339,7 +339,7 @@ export default function LandingPage() {
       {/* ── NAVBAR ── */}
       <nav
         className={[
-          "fixed top-0 left-0 right-0 z-50 h-16 flex items-center justify-between px-12 transition-all duration-300",
+          "fixed top-0 left-0 right-0 z-50 h-16 flex items-center justify-between px-6 md:px-12 transition-all duration-300",
           scrolled ? "bg-[#E9E9E9]/90 backdrop-blur-md shadow-[0_1px_0_rgba(10,10,10,0.08)]" : "",
         ].join(" ")}
       >
@@ -544,7 +544,7 @@ export default function LandingPage() {
 
       {/* ── HOW IT WORKS ── */}
       <section id="how-it-works" aria-label="How it works">
-        <div className="max-w-[1200px] mx-auto px-12 py-24">
+        <div className="max-w-[1200px] mx-auto px-6 md:px-12 py-16 md:py-24">
 
           <div className="mb-16">
             <div ref={eyebrowRef} className="eyebrow-line flex items-center gap-2 text-[11px] font-bold tracking-[1.4px] uppercase text-[#FF4D00] mb-4">
@@ -588,7 +588,7 @@ export default function LandingPage() {
               <div
                 key={f.tag}
                 role="listitem"
-                className="bg-white/55 p-10 flex flex-col gap-5 group hover:bg-white/80"
+                className="bg-white/55 p-6 md:p-10 flex flex-col gap-5 group hover:bg-white/80"
                 style={{
                   opacity:    featureInView ? 1 : 0,
                   transform:  featureInView ? "translateY(0)" : "translateY(28px)",
@@ -616,10 +616,10 @@ export default function LandingPage() {
       </section>
 
       {/* ── CTA ── */}
-      <div className="px-12 pb-24">
+      <div className="px-6 md:px-12 pb-16 md:pb-24">
         <div
           ref={ctaRef}
-          className="max-w-[1200px] mx-auto bg-[#0A0A0A] rounded-3xl px-16 py-20 flex flex-col md:flex-row items-start md:items-center justify-between gap-12 relative overflow-hidden"
+          className="max-w-[1200px] mx-auto bg-[#0A0A0A] rounded-3xl px-8 py-12 md:px-16 md:py-20 flex flex-col md:flex-row items-start md:items-center justify-between gap-12 relative overflow-hidden"
           style={{
             opacity:    ctaInView ? 1 : 0,
             transform:  ctaInView ? "translateY(0)" : "translateY(32px)",

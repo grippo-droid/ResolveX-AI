@@ -20,7 +20,7 @@ export default function Navbar({ sidebarOpen, onSidebarToggle, activeLabel }: Na
   return (
    <header
   className={[
-    "shrink-0 h-16 flex items-center justify-between px-7 z-30 transition-all duration-300 border-b border-black/20",
+    "shrink-0 h-16 flex items-center justify-between px-4 sm:px-7 z-30 transition-all duration-300 border-b border-black/20",
     scrolled
       ? "bg-[#E9E9E9]/90 backdrop-blur-md shadow-[0_1px_0_rgba(10,10,10,0.08)]"
       : "bg-transparent",
@@ -41,7 +41,7 @@ export default function Navbar({ sidebarOpen, onSidebarToggle, activeLabel }: Na
 
         {/* Page title */}
         <div>
-          <h1 className="text-[25px] font-bold text-[#0A0A0A] tracking-tight leading-none">
+          <h1 className="text-[20px] sm:text-[25px] font-bold text-[#0A0A0A] tracking-tight leading-none">
             {activeLabel}     {/* ← was hardcoded "Dashboard" */}
           </h1>
           <p className="text-[12px] text-[#6B6B6B] mt-0.5">

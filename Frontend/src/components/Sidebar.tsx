@@ -140,9 +140,13 @@ export default function Sidebar({
         style={{
           width:      isOpen ? "280px" : "76px",
           minWidth:   isOpen ? "280px" : "76px",
-          transition: "width 0.28s cubic-bezier(0.4,0,0.2,1), min-width 0.28s cubic-bezier(0.4,0,0.2,1)",
+          transition: "width 0.28s cubic-bezier(0.4,0,0.2,1), min-width 0.28s cubic-bezier(0.4,0,0.2,1), transform 0.28s cubic-bezier(0.4,0,0.2,1)",
         }}
-        className="relative flex flex-col h-screen bg-[#0D0D0D] border-r border-white/[0.07] shrink-0 z-40 overflow-hidden"
+        className={[
+          "flex flex-col h-screen bg-[#0D0D0D] border-r border-white/[0.07] shrink-0 overflow-hidden",
+          "max-md:fixed max-md:top-0 max-md:left-0 max-md:bottom-0 max-md:z-50 md:relative md:z-40",
+          !isOpen ? "max-md:-translate-x-full" : "max-md:translate-x-0"
+        ].join(" ")}
       >
         {/* Ambient glow */}
         <div

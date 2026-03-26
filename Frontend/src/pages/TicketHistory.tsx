@@ -108,7 +108,7 @@ function TicketDrawer({
       onClick={onClose}
     >
       <div
-        className="w-full max-w-[950px] bg-white rounded-2xl shadow-2xl overflow-hidden"
+        className="w-[95vw] sm:w-full max-w-[950px] bg-white rounded-2xl shadow-2xl overflow-hidden"
         style={{ maxHeight: "90vh" }}
         onClick={e => e.stopPropagation()}
       >
@@ -151,7 +151,7 @@ function TicketDrawer({
         </div>
 
         {/* ── Body ── */}
-        <div className="p-6 flex flex-col gap-5 overflow-y-auto" style={{ maxHeight: "calc(90vh - 84px)" }}>
+        <div className="p-4 sm:p-6 flex flex-col gap-4 sm:gap-5 overflow-y-auto" style={{ maxHeight: "calc(90vh - 84px)" }}>
 
           {/* ── PENDING: Processing banner replaces AI Decision banner ── */}
           {isPending ? (
@@ -238,7 +238,7 @@ function TicketDrawer({
           )}
 
           {/* Meta Grid (always visible) */}
-          <div className="grid grid-cols-3 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
             {[
               { label: "Submitted By", value: ticket.submitted_by || "—" },
               { label: "Category",     value: `${CATEGORY_ICONS[ticket.category ?? ""] ?? "📋"} ${CATEGORY_LABELS[ticket.category ?? ""] ?? ticket.category ?? "—"}` },
@@ -529,6 +529,8 @@ export default function TicketHistory() {
         {/* Ticket Table */}
         {filtered.length > 0 && (
           <div className="bg-white rounded-2xl border border-black/[0.08] overflow-hidden">
+            <div className="overflow-x-auto">
+              <div className="min-w-[800px]">
 
             {/* Table header — "Decision" renamed to "Status" */}
             <div className="grid grid-cols-[1fr_140px_130px_80px_28px] gap-4 px-5 py-3 border-b border-black/[0.06] bg-[#F9F9F9]">
@@ -612,6 +614,8 @@ export default function TicketHistory() {
                 </div>
               );
             })}
+              </div>
+            </div>
           </div>
         )}
 

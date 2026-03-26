@@ -38,7 +38,7 @@ export default function Analytics() {
 
   if (loading) return (
     <div className="flex flex-col items-center justify-center min-h-[70vh] gap-6 relative overflow-hidden bg-[#FAFAFA]">
-      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-[#FF4D00]/5 rounded-full blur-[100px] pointer-events-none" />
+      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[100vw] sm:w-[600px] h-[100vw] sm:h-[600px] bg-[#FF4D00]/5 rounded-full blur-[100px] pointer-events-none" />
       <div className="relative w-16 h-16">
         <div className="absolute inset-0 rounded-full border-[3px] border-black/[0.04]" />
         <div className="absolute inset-0 rounded-full border-[3px] border-transparent"
@@ -112,10 +112,10 @@ export default function Analytics() {
       `}</style>
       
       {/* Subtle Background Orbs */}
-      <div className="absolute top-[-10%] left-[-10%] w-[500px] h-[500px] bg-black/[0.02] rounded-full blur-[120px] pointer-events-none" />
-      <div className="absolute bottom-[-10%] right-[-10%] w-[600px] h-[600px] bg-black/[0.02] rounded-full blur-[120px] pointer-events-none" />
+      <div className="absolute top-[-10%] left-[-10%] w-[100vw] sm:w-[500px] h-[100vw] sm:h-[500px] bg-black/[0.02] rounded-full blur-[120px] pointer-events-none" />
+      <div className="absolute bottom-[-10%] right-[-10%] w-[100vw] sm:w-[600px] h-[100vw] sm:h-[600px] bg-black/[0.02] rounded-full blur-[120px] pointer-events-none" />
 
-      <div className="flex flex-col gap-8 w-full max-w-[1300px] mx-auto px-6 py-10 relative z-10 fade-up">
+      <div className="flex flex-col gap-8 w-full max-w-[1300px] mx-auto px-4 lg:px-6 py-8 sm:py-10 relative z-10 fade-up">
         
         {/* ── Header ── */}
         <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4">
@@ -136,7 +136,7 @@ export default function Analytics() {
         {/* ── KPI Cards ── */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5 fade-up delay-1">
           
-          <div className="glass-card p-6 rounded-[24px] shadow-[0_8px_30px_rgb(0,0,0,0.03)] hover:-translate-y-1.5 transition-all duration-300 relative overflow-hidden group">
+          <div className="glass-card p-4 sm:p-6 rounded-[24px] shadow-[0_8px_30px_rgb(0,0,0,0.03)] hover:-translate-y-1.5 transition-all duration-300 relative overflow-hidden group">
             <div className="absolute top-0 right-0 w-32 h-32 bg-black/[0.02] rounded-bl-full transition-transform group-hover:scale-110" />
             <div className="flex items-center justify-between mb-6 relative">
               <span className="text-[12px] font-bold text-[#6B6B6B] uppercase tracking-[1.2px]">Total Volume</span>
@@ -152,7 +152,7 @@ export default function Analytics() {
             </div>
           </div>
 
-          <div className="glass-card p-6 rounded-[24px] shadow-[0_8px_30px_rgb(0,0,0,0.03)] hover:-translate-y-1.5 transition-all duration-300 relative overflow-hidden group">
+          <div className="glass-card p-4 sm:p-6 rounded-[24px] shadow-[0_8px_30px_rgb(0,0,0,0.03)] hover:-translate-y-1.5 transition-all duration-300 relative overflow-hidden group">
             <div className="absolute top-0 right-0 w-32 h-32 bg-black/[0.02] rounded-bl-full transition-transform group-hover:scale-110" />
             <div className="flex items-center justify-between mb-6 relative">
               <span className="text-[12px] font-bold uppercase tracking-[1.2px] text-[#6B6B6B]">Auto-Resolved</span>
@@ -171,7 +171,7 @@ export default function Analytics() {
             </div>
           </div>
 
-          <div className="glass-card p-6 rounded-[24px] shadow-[0_8px_30px_rgb(0,0,0,0.03)] hover:-translate-y-1.5 transition-all duration-300 relative overflow-hidden group">
+          <div className="glass-card p-4 sm:p-6 rounded-[24px] shadow-[0_8px_30px_rgb(0,0,0,0.03)] hover:-translate-y-1.5 transition-all duration-300 relative overflow-hidden group">
             <div className="absolute top-0 right-0 w-32 h-32 bg-black/[0.02] rounded-bl-full transition-transform group-hover:scale-110" />
             <div className="flex items-center justify-between mb-6 relative">
               <span className="text-[12px] font-bold uppercase tracking-[1.2px] text-[#6B6B6B]">Escalated (HITL)</span>
@@ -190,7 +190,7 @@ export default function Analytics() {
             </div>
           </div>
 
-          <div className="glass-card p-6 rounded-[24px] shadow-[0_8px_30px_rgb(0,0,0,0.03)] hover:-translate-y-1.5 transition-all duration-300 relative overflow-hidden group">
+          <div className="glass-card p-4 sm:p-6 rounded-[24px] shadow-[0_8px_30px_rgb(0,0,0,0.03)] hover:-translate-y-1.5 transition-all duration-300 relative overflow-hidden group">
             <div className="absolute inset-x-0 bottom-0 h-1 bg-gradient-to-r from-[#FF4D00] to-[#15803D]" />
             <div className="flex items-center justify-between mb-6 relative">
               <span className="text-[12px] font-bold text-[#6B6B6B] uppercase tracking-[1.2px]">AI Confidence</span>
@@ -229,7 +229,7 @@ export default function Analytics() {
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 fade-up delay-2">
           
           {/* Status Distribution Donut Chart */}
-          <div className="glass-card p-6 rounded-[24px] shadow-[0_8px_30px_rgb(0,0,0,0.02)] flex flex-col items-center">
+          <div className="glass-card p-4 sm:p-6 rounded-[24px] shadow-[0_8px_30px_rgb(0,0,0,0.02)] flex flex-col items-center">
             <div className="w-full flex items-center justify-between mb-2">
               <h3 className="text-[16px] font-bold text-[#0A0A0A] tracking-tight">Status Distribution</h3>
               <div className="w-8 h-8 rounded-full bg-black/5 flex items-center justify-center"><Clock className="w-4 h-4 text-[#6B6B6B]" /></div>
@@ -272,7 +272,7 @@ export default function Analytics() {
           </div>
 
           {/* Category Bar Chart */}
-          <div className="glass-card p-6 rounded-[24px] shadow-[0_8px_30px_rgb(0,0,0,0.02)] lg:col-span-2 flex flex-col">
+          <div className="glass-card p-4 sm:p-6 rounded-[24px] shadow-[0_8px_30px_rgb(0,0,0,0.02)] lg:col-span-2 flex flex-col">
             <div className="flex items-center justify-between mb-6">
               <h3 className="text-[16px] font-bold text-[#0A0A0A] tracking-tight">Incidents by Expert Category</h3>
             </div>
@@ -304,7 +304,7 @@ export default function Analytics() {
         {/* ── Additional Analytics Details ── */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 fade-up delay-3 pb-8">
           
-          <div className="glass-card p-6 rounded-[24px] shadow-[0_8px_30px_rgb(0,0,0,0.02)] border-t-[4px] border-t-[#0A0A0A]">
+          <div className="glass-card p-4 sm:p-6 rounded-[24px] shadow-[0_8px_30px_rgb(0,0,0,0.02)] border-t-[4px] border-t-[#0A0A0A]">
             <h3 className="text-[15px] font-bold text-[#0A0A0A] tracking-tight mb-5">Predictive Certainty Breakdown</h3>
             <p className="text-[13px] text-[#6B6B6B] leading-relaxed mb-6">
               AI resolution confidence ranges directly affect routing. High confidence (≥70%) leads to auto-resolution, 
@@ -339,7 +339,7 @@ export default function Analytics() {
             </div>
           </div>
 
-          <div className="glass-card p-6 rounded-[24px] shadow-[0_8px_30px_rgb(0,0,0,0.02)]">
+          <div className="glass-card p-4 sm:p-6 rounded-[24px] shadow-[0_8px_30px_rgb(0,0,0,0.02)]">
             <h3 className="text-[15px] font-bold text-[#0A0A0A] tracking-tight mb-5">System Automation Efficiency</h3>
             <div className="flex flex-col gap-5 mt-2">
               <div>
