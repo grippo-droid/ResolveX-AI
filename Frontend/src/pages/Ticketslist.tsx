@@ -153,7 +153,7 @@ function TicketDetailDrawer({
       onClick={onClose}
     >
       <div
-        className="w-full max-w-[950px] bg-white rounded-2xl shadow-2xl overflow-hidden"
+        className="w-[95vw] sm:w-full max-w-[950px] bg-white rounded-2xl shadow-2xl overflow-hidden"
         style={{ maxHeight: "90vh" }}
         onClick={e => e.stopPropagation()}
       >
@@ -198,7 +198,7 @@ function TicketDetailDrawer({
           </button>
         </div>
 
-        <div className="p-6 flex flex-col gap-5 overflow-y-auto" style={{ maxHeight: "calc(90vh - 80px)" }}>
+        <div className="p-4 sm:p-6 flex flex-col gap-4 sm:gap-5 overflow-y-auto" style={{ maxHeight: "calc(90vh - 80px)" }}>
 
           {/* ── PENDING: Processing banner replaces Confidence Ring + AI Decision ── */}
           {isPending ? (
@@ -268,7 +268,7 @@ function TicketDetailDrawer({
           )}
 
           {/* ── Meta Grid (always visible) ── */}
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
             {[
               { label: "Submitted By", value: ticket.submitted_by ?? "—" },
               { label: "Assigned To",  value: ticket.assigned_resolver_name || ticket.assigned_to || "Unassigned" },
@@ -853,7 +853,9 @@ export default function TicketsList() {
         {/* ── Tickets Table ── */}
         {filtered.length > 0 && (
           <div className="bg-white rounded-2xl border border-black/[0.08] overflow-hidden">
-            <div className="grid gap-4 px-5 py-3 border-b border-black/[0.06] bg-[#F9F9F9]"
+            <div className="overflow-x-auto">
+              <div className="min-w-[800px]">
+                <div className="grid gap-4 px-5 py-3 border-b border-black/[0.06] bg-[#F9F9F9]"
               style={{ gridTemplateColumns: "1fr 130px 120px 100px 80px 80px 36px" }}>
               {[
                 { label: "Ticket",     field: null         },
@@ -988,6 +990,8 @@ export default function TicketsList() {
                 </div>
               );
             })}
+              </div>
+            </div>
           </div>
         )}
 

@@ -281,7 +281,7 @@ export default function Simulation() {
         <div className="fade-up flex flex-col lg:flex-row gap-5 items-start">
 
           {/* LEFT: Theory panel */}
-          <div className="lg:w-[260px] shrink-0 flex flex-col gap-4">
+          <div className="w-full lg:w-[260px] shrink-0 flex flex-col gap-4">
         
 
             <div className="bg-white rounded-2xl border border-black/10 p-5 flex flex-col gap-4">
@@ -313,7 +313,7 @@ export default function Simulation() {
           </div>
 
           {/* RIGHT: Form */}
-          <div className="flex-1 bg-white/70 border border-black/[0.08] rounded-2xl p-6 flex flex-col gap-5">
+          <div className="w-full lg:flex-1 bg-white/70 border border-black/[0.08] rounded-2xl p-5 sm:p-6 flex flex-col gap-5">
 
             <div>
               <div className="inline-flex items-center gap-2 bg-[#FF4D00]/10 border border-[#FF4D00]/20 text-[#FF4D00] text-[11px] font-bold tracking-widest uppercase px-3 py-1.5 rounded-full mb-3">
@@ -484,8 +484,8 @@ export default function Simulation() {
       {phase === "thankyou" && result && (() => {
         const meta = DECISION_META[result.decision];
         return (
-          <div className="slide-up flex flex-col items-center justify-center min-h-[60vh]">
-            <div className="w-full max-w-[520px] flex flex-col items-center gap-6">
+          <div className="slide-up flex flex-col items-center justify-center min-h-[60vh] px-4">
+            <div className="w-[95vw] sm:w-full max-w-[520px] flex flex-col items-center gap-6">
 
               <div className="check-pop w-20 h-20 rounded-full bg-[#0A0A0A] flex items-center justify-center shadow-xl">
                 <svg width="36" height="36" viewBox="0 0 36 36" fill="none">

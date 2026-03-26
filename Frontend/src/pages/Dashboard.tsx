@@ -63,13 +63,21 @@ export default function Dashboard() {
         onActiveChange={setActiveId}
         badgeCounts={{ tickets: ticketCount }}  // ✅ pass live counts
       />
+      {/* Mobile backdrop */}
+      {sidebarOpen && (
+        <div 
+          className="fixed inset-0 z-40 bg-black/40 backdrop-blur-sm md:hidden"
+          onClick={handleToggle}
+          aria-hidden="true"
+        />
+      )}
       <div className="flex flex-col flex-1 min-w-0 overflow-hidden bg-[#E9E9E9]">
         <Navbar
           sidebarOpen={sidebarOpen}
           onSidebarToggle={handleToggle}
           activeLabel={PAGE_LABELS[activeId] ?? "Dashboard"}
         />
-        <main className="flex-1 overflow-y-auto px-7 py-7" role="main">
+        <main className="flex-1 overflow-y-auto px-4 sm:px-7 py-7" role="main">
           {activeId === "overview"      && <Analytics />}
           {activeId === "simulation"    && <Simulation />}
           {activeId === "tickethistory" && <TicketHistory />}
